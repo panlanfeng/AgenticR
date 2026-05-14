@@ -47,6 +47,9 @@ agenticr_env$active_skills <- list()
 agenticr_env$session_dir <- NULL
 agenticr_env$session_id <- NULL
 agenticr_env$history_file <- NULL
+agenticr_env$r_history_file <- file.path(
+  Sys.getenv("HOME", unset = "~"), ".agenticr", "history"
+)
 
 .onLoad <- function(libname, pkgname) {
   assign("config", load_config(), envir = agenticr_env)

@@ -50,6 +50,7 @@ agentic <- function(auto = TRUE, ...) {
   cli::cli_text("Type {.code exit()} or press {.kbd Ctrl+C} to quit.")
   cli::cli_text("Type {.code /help} for assistance.")
   cli::cli_text("Session: {.file {agenticr_env$session_dir}}")
+  load_r_history()
   cat("\n")
 
   cfg <- tryCatch(get_api_config(), error = function(e) {
@@ -204,6 +205,7 @@ process_input <- function(input) {
         agenticr_env$conversation,
         list(list(role = "user", content = conv_msg))
       )
+      write_r_history(input)
       if (length(agenticr_env$conversation) > 20) {
         agenticr_env$conversation <- tail(agenticr_env$conversation, 20)
       }
@@ -428,6 +430,27 @@ process_with_agent <- function(user_input) {
 #' Write a turn to the session history file
 #'
 #' @keywords internal
+#' Load R command history for up-arrow recall
+#'
+#' @keywords internal
+load_r_history <- function() {
+  if (!is.null(agenticr_env$r_history_file) && file.exists(agenticr_env$r_history_file)) {
+    tryCatch(
+      suppressWarnings(utils::loadhistory(agenticr_env$r_history_file)),
+      error = function(e) NULL
+    )
+  }
+}
+
+#' Append R code to the history file for up-arrow recall
+#'
+#' @keywords internal
+write_r_history <- function(code) {
+  if (is.null(agenticr_env$r_history_file)) return()
+  dir.create(dirname(agenticr_env$r_history_file), showWarnings = FALSE, recursive = TRUE)
+  cat(paste0(code, "\n"), file = agenticr_env$r_history_file, append = TRUE)
+}
+
 write_turn_history <- function(user_input, result) {
   if (is.null(agenticr_env$history_file)) return()
   agenticr_env$turn_counter <- agenticr_env$turn_counter + 1L
