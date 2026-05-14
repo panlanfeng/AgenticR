@@ -29,7 +29,10 @@ is_natural_language <- function(input) {
     "^source\\(",                # Source
     "^load\\(",                  # Load data
     "^save\\(",                  # Save data
-    "^data\\("                   # Load built-in data
+    "^data\\(",                  # Load built-in data
+    "^lm\\(",                    # Linear model
+    "^glm\\(",                   # Generalized linear model
+    "\\|>"                       # Native pipe (escaped)
   )
 
   for (pattern in r_indicators) {

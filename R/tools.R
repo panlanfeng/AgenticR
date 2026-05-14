@@ -403,26 +403,36 @@ tool_get_function_help <- function(name) {
     return("Error: No function name provided")
   }
 
-  help_text <- utils::capture.output(
-    suppressMessages(
-      tryCatch(
-        help(name, help_type = "text"),
-        error = function(e) paste0("Error: ", conditionMessage(e))
-      )
-    )
+  old_pager <- getOption("pager")
+  on.exit(options(pager = old_pager))
+  options(pager = function(files, header, title, delete.file) {
+    for (f in files) cat(paste(readLines(f), collapse = "\n"))
+  })
+
+  help_lines <- character(0)
+  con <- textConnection("help_lines", open = "w", local = TRUE)
+  sink(con)
+  tryCatch(
+    help(name, help_type = "text"),
+    error = function(e) cat("Error:", conditionMessage(e))
   )
+  sink()
+  close(con)
 
-  help_text <- help_text[nchar(trimws(help_text)) > 0]
+  help_lines <- help_lines[nchar(trimws(help_lines)) > 0]
 
-  if (length(help_text) == 0) {
+  if (length(help_lines) == 0) {
     return(paste0("No documentation found for '", name, "'"))
   }
 
-  if (length(help_text) > 80) {
-    help_text <- c(help_text[1:80], paste0("... [", length(help_text) - 80, " more lines]"))
+  if (length(help_lines) > 80) {
+    help_lines <- c(
+      help_lines[1:80],
+      paste0("... [", length(help_lines) - 80, " more lines]")
+    )
   }
 
-  paste(help_text, collapse = "\n")
+  paste(help_lines, collapse = "\n")
 }
 
 #' Search file contents for a regex pattern using rg or grep
