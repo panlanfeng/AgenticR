@@ -1,0 +1,21 @@
+# AgenticR Configuration
+# Set your API key here, or use the AGENTICR_API_KEY environment variable.
+
+# Your API key (starts with "sk-")
+api_key: ""
+
+# API endpoint base URL
+# - DeepSeek: https://api.deepseek.com/v1
+# - OpenAI:   https://api.openai.com/v1
+# - Custom:   https://your-endpoint.com/v1
+api_base: "https://api.deepseek.com/v1"
+
+# Model name
+# - DeepSeek: deepseek-chat
+# - OpenAI:   gpt-4, gpt-4o, gpt-3.5-turbo
+api_model: "deepseek-chat"
+
+# Generation parameters
+temperature: 0.1
+max_tokens: 4096
+max_rounds: 10

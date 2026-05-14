@@ -1,0 +1,13 @@
+^agenticr\.Rproj$
+^\.Rproj\.user$
+^\.Rhistory$
+^\.RData$
+^\.Ruserdata$
+^README\.Rmd$
+^\.github$
+^cran-comments\.md$
+^LICENSE\.md$
+^revdep$
+^docs$
+^_pkgdown\.yml$
+^pkgdown$
