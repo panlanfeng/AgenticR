@@ -166,13 +166,30 @@ estimate_tokens <- function(messages) {
 run_compaction <- function(messages) {
   if (length(messages) <= 4) return(messages)
 
+  # Find the start of the conversation tail within messages
+  # Skip system, AGENTS.md, skills, stable_context, compaction_summary
+  conv_start <- 2
+  for (k in 2:min(length(messages), 8)) {
+    mc <- messages[[k]]$content
+    if (is.null(mc)) next
+    if (grepl("^\\[AGENTS\\.md|^\\[Active skill:|^\\[Stable context\\]|^\\[Compaction summary\\]", mc)) {
+      conv_start <- k + 1
+    } else {
+      break
+    }
+  }
+
+  # Send only system + prefix + last 10 conversation messages to the sub-agent
+  tail_start <- max(conv_start, length(messages) - 10)
+  summary_messages <- c(messages[1:min(conv_start - 1, 3)], messages[tail_start:length(messages)])
+
   summary_prompt <- list(list(role = "user", content = paste0(
     "Summarize the conversation so far into a concise context block. ",
     "Include: what the user has been working on, key variables and data, ",
     "important commands/analyses and their results, and any errors encountered. ",
     "Keep it under 300 words."
   )))
-  summary_msgs <- c(messages, summary_prompt)
+  summary_msgs <- c(summary_messages, summary_prompt)
   resp <- tryCatch(
     chat_completion(summary_msgs, tools = NULL),
     error = function(e) NULL
@@ -188,43 +205,27 @@ run_compaction <- function(messages) {
   agenticr_env$stable_summary <- paste0(
     "[Compaction summary]\n", trimws(summary_text)
   )
-  agenticr_env$conversation <- tail(agenticr_env$conversation, 4)
 
-  sys_msg <- messages[[1]]
-  new_msgs <- list(sys_msg)
-
-  i <- 2
-  while (i <= length(messages)) {
-    msg_content <- messages[[i]]$content
-    if (!is.null(msg_content) && grepl("^\\[AGENTS\\.md", msg_content)) {
-      new_msgs <- c(new_msgs, messages[i])
-      i <- i + 1
-    } else {
-      break
-    }
+  # Trim conversation from the current messages, not stale env state
+  conv <- messages[conv_start:length(messages)]
+  while (length(conv) > 0 && conv[[1]]$role == "tool") {
+    conv <- conv[-1]
   }
+  conv <- tail(conv, 4)
+  agenticr_env$conversation <- conv
 
-  ctx_msg <- NULL
-  if (i <= length(messages) && !is.null(messages[[i]]$content) &&
-      grepl("^\\[Stable context\\]", messages[[i]]$content)) {
-    ctx_msg <- messages[[i]]
-    i <- i + 1
-  }
-  if (!is.null(ctx_msg)) new_msgs <- c(new_msgs, list(ctx_msg))
-
-  if (i <= length(messages) && !is.null(messages[[i]]$content) &&
-      grepl("^\\[Compaction summary\\]", messages[[i]]$content)) {
-    i <- i + 1
-  }
-
+  # Rebuild messages with trimmed conversation
+  new_msgs <- messages[1:(conv_start - 1)]
   new_msgs <- c(new_msgs, list(list(
     role = "user", content = agenticr_env$stable_summary
   )))
-
-  if (length(agenticr_env$conversation) > 0) {
-    new_msgs <- c(new_msgs, agenticr_env$conversation)
+  if (length(conv) > 0) {
+    new_msgs <- c(new_msgs, conv)
   }
-  new_msgs <- c(new_msgs, list(messages[[length(messages)]]))
+  last_slot <- messages[[length(messages)]]
+  if (last_slot$role == "user") {
+    new_msgs <- c(new_msgs, list(last_slot))
+  }
 
   new_msgs
 }

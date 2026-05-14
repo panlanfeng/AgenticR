@@ -22,6 +22,7 @@ agentic <- function(auto = TRUE, ...) {
   agenticr_env$context_injected <- FALSE
   agenticr_env$stable_summary <- NULL
   agenticr_env$last_known_cwd <- getwd()
+  agenticr_env$session_start <- Sys.time()
   agenticr_env$last_memory_extract_tokens <- 0L
   agenticr_env$total_session_tokens <- 0L
   agenticr_env$ask_permission <- function(prompt) {
@@ -276,10 +277,13 @@ process_with_agent <- function(user_input) {
     response <- tryCatch(
       chat_completion(messages, tools),
       error = function(e) {
-        stop("LLM API call failed: ", conditionMessage(e))
+        cli::cli_alert_danger("LLM API call failed: {conditionMessage(e)}")
+        cli::cli_alert_info("Conversation state preserved. You can continue or retry.")
+        return(NULL)
       }
     )
 
+    if (is.null(response)) break
     if (length(response$choices) == 0) {
       cli::cli_alert_danger("LLM returned no choices.")
       break
@@ -474,7 +478,7 @@ build_stable_context <- function() {
     "[Stable context]\n",
     "R version: ", R.version.string, "\n",
     "Platform: ", R.version$platform, "\n",
-    "Start time: ", Sys.time(), "\n",
+    "Start time: ", format(agenticr_env$session_start, "%Y-%m-%d %H:%M:%S"), "\n",
     "Working directory at start: ", getwd(),
     mem_note
   )

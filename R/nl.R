@@ -41,6 +41,15 @@ is_natural_language <- function(input) {
     }
   }
 
+  # Parse check: if R parser succeeds, it's valid R code
+  parsed <- tryCatch(
+    parse(text = input),
+    error = function(e) NULL
+  )
+  if (!is.null(parsed) && length(parsed) > 0) {
+    return(FALSE)
+  }
+
   # Strong NL indicators
   nl_indicators <- c(
     "^what\\s", "^how\\s", "^why\\s", "^when\\s", "^where\\s",
@@ -90,16 +99,6 @@ is_natural_language <- function(input) {
     if (nl_count >= 2) {
       return(TRUE)
     }
-  }
-
-  # Try parsing as R: if it fails to parse, it's likely NL
-  parsed <- tryCatch(
-    parse(text = input),
-    error = function(e) NULL
-  )
-
-  if (is.null(parsed) || length(parsed) == 0) {
-    return(TRUE)
   }
 
   FALSE

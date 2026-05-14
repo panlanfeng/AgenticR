@@ -391,13 +391,6 @@ tool_read_file <- function(path) {
     content <- c(content[1:200], paste0("... [", length(content) - 200, " more lines]"))
   }
 
-  if (length(content) > 2000) {
-    content <- c(
-      content[1:200],
-      paste0("... [", length(content) - 200, " more lines]")
-    )
-  }
-
   paste(content, collapse = "\n")
 }
 
