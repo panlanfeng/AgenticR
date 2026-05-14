@@ -1,4 +1,4 @@
-# AgenticR — AI-Powered R Console Assistant
+# AgenticR — Turn R console into AI Agent
 
 Type natural language or incorrect R code directly in the RStudio console. AgenticR routes natural language to an LLM agent that generates and executes R code in the current session. Valid R code executes directly with zero latency — no LLM overhead.
 
@@ -10,12 +10,10 @@ Type natural language or incorrect R code directly in the RStudio console. Agent
 ## Installation
 
 ```r
-# Install from source
+# Install from GitHub
 install.packages("remotes")
-remotes::install_local("path/to/agenticr")
+remotes::install_github("panlanfeng/AgenticR")
 ```
-
-Or build from source: `R CMD build . && R CMD INSTALL agenticr_0.1.0.tar.gz`
 
 ## Quick Start
 
@@ -46,6 +44,7 @@ agentic()
 Set any of these env vars and AgenticR auto-detects the provider:
 
 ```bash
+#any one of the following will work
 export DEEPSEEK_API_KEY="sk-..."
 export OPENAI_API_KEY="sk-..."
 export ANTHROPIC_API_KEY="sk-..."
@@ -83,27 +82,6 @@ agentic_config(api_key = "sk-...", save = TRUE)
 agentic_config(temperature = 0.0)  # deterministic output
 ```
 
-## Supported Providers
-
-| Provider | Model | Env Var |
-|----------|-------|---------|
-| DeepSeek | deepseek-v4-pro | DEEPSEEK_API_KEY |
-| OpenAI | gpt-5.5 | OPENAI_API_KEY |
-| Anthropic | claude-opus-4-7 | ANTHROPIC_API_KEY |
-| Google Gemini | gemini-2.5-pro | GOOGLE_API_KEY |
-| Zhipu GLM | glm-5.1 | GLM_API_KEY |
-| Moonshot Kimi | kimi-k2.6 | KIMI_API_KEY |
-| MiniMax | MiniMax-M2.7 | MINIMAX_API_KEY |
-| Alibaba Qwen | qwen-max-latest | QWEN_API_KEY |
-| xAI | grok-2-1212 | XAI_API_KEY |
-| OpenRouter | openai/gpt-5.5 | OPENROUTER_API_KEY |
-| SiliconFlow | deepseek-ai/DeepSeek-V3-0324 | SILICONFLOW_API_KEY |
-| Perplexity | sonar-pro | PERPLEXITY_API_KEY |
-| Mistral | mistral-large-latest | MISTRAL_API_KEY |
-| Amazon Bedrock | anthropic.claude-opus-4-7-v1:0 | AWS_ACCESS_KEY_ID |
-| Custom | your-model | any env var |
-
-Run `agentic_providers()` to see all presets and which keys are configured.
 
 ## Features
 
@@ -121,24 +99,6 @@ Mean MPG: 4-cyl 26.7, 6-cyl 19.7, 8-cyl 15.1
 ### Direct R code execution (zero latency)
 
 Valid R code is executed directly — parsed and evaluated in the current session with no LLM call. Assignment creates persistent variables, plots render in the Plots pane.
-
-### Streaming output
-
-LLM responses stream token-by-token. Reasoning appears dimmed, agent responses render incrementally. No waiting for the full API response.
-
-### Natural language detection
-
-Multi-factor heuristic distinguishes R code from natural language. Checks assignment operators (`<-`), pipes (`|>`, `%>%`), function calls (`library(`, `lm(`), question patterns, word count, and R's parser as fallback.
-
-### Multi-line R code
-
-Paste multi-line pipes or code blocks — the REPL detects incomplete expressions and provides a `+` continuation prompt until the block is complete.
-
-```
-> mtcars |>
-+   group_by(cyl) |>
-+   summarise(mean_mpg = mean(mpg))
-```
 
 ### Error interceptor
 
@@ -191,21 +151,6 @@ mcp_servers:
     args: ["-y", "@anthropic/mcp-filesystem", "/path"]
 ```
 
-### Cache-preserving context design
-
-The context sent to the LLM uses a stable prefix structure that maximizes prompt cache hits:
-
-```
-[system prompt]           ← never changes
-[AGENTS.md]               ← injected once per session
-[active skills]           ← injected once (or when activated)
-[stable context]          ← injected once (R version, platform, session start)
-[compaction summary]      ← changes only on context compaction
-[...conversation]         ← ephemeral, changes every turn
-[current user input]      ← ephemeral
-```
-
-Dynamic environment changes (working directory) are injected via `<system_reminder>` blocks in the user message — never in the cached prefix.
 
 ### Conversation memory
 
@@ -236,33 +181,7 @@ Prefer data.table over dplyr for large datasets.
 | `/mcp` | Show connected MCP servers |
 | `exit()` or Ctrl+C | Quit agentic session |
 
-## API Functions
 
-| Function | Purpose |
-|----------|---------|
-| `agentic()` | Start interactive AI-assisted REPL |
-| `agentic_process(query)` | One-shot NL query (non-interactive) |
-| `agentic_chat(query)` | Same as `agentic_process()` |
-| `agentic_config(...)` | Read/write configuration |
-| `agentic_setup()` | Interactive setup wizard |
-| `agentic_providers()` | List available LLM providers |
-| `agentic_enable()` | Enable error interceptor for standard prompt |
-| `agentic_disable()` | Disable error interceptor |
-| `agentic_install_skill(url)` | Download and install a skill |
-| `agentic_skills()` | List installed skills |
-| `agentic_mcp_add(name, cmd, args)` | Add an MCP server |
-| `agentic_mcp()` | List connected MCP servers |
-
-## RStudio Integration
-
-Add to `.Rprofile` for automatic startup:
-
-```r
-if (interactive()) {
-  library(agenticr)
-  agentic()
-}
-```
 
 ## Architecture
 
@@ -292,20 +211,6 @@ print()     ▼
    └──────→ back to prompt
 ```
 
-## Tests
-
-```r
-# Unit tests (100)
-library(testthat)
-testthat::test_local("path/to/AgenticR")
-
-# LLM integration tests (requires API key)
-DEEPSEEK_API_KEY="sk-..." Rscript -e '
-  library(agenticr)
-  library(testthat)
-  testthat::test_local("path/to/AgenticR")
-'
-```
 
 ## License
 
