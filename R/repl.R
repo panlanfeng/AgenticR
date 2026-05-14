@@ -302,6 +302,9 @@ process_with_agent <- function(user_input) {
         tool_calls = msg$tool_calls,
         content = if (is.null(msg$content)) NULL else msg$content
       )
+      if (!is.null(msg$reasoning_content)) {
+        assistant_msg$reasoning_content <- msg$reasoning_content
+      }
       messages <- c(messages, list(assistant_msg))
 
       for (tc in msg$tool_calls) {
@@ -348,10 +351,14 @@ process_with_agent <- function(user_input) {
         }
       }
 
-      messages <- c(messages, list(list(
+      msg_entry <- list(
         role = "assistant",
         content = content
-      )))
+      )
+      if (!is.null(msg$reasoning_content)) {
+        msg_entry$reasoning_content <- msg$reasoning_content
+      }
+      messages <- c(messages, list(msg_entry))
 
       if (length(code_blocks) > 0) {
         for (code in code_blocks) {
