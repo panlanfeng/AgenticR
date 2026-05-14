@@ -93,13 +93,21 @@ sanitize_messages <- function(messages) {
 
 #' Send a streaming chat completion request
 #'
+#' Parses SSE stream, calls callbacks for each delta type,
+#' and returns the accumulated full response.
+#'
 #' @param messages List of message objects
 #' @param tools List of tool definitions (optional)
-#' @param on_chunk Callback for each content chunk
-#' @return The complete assistant message
+#' @param on_reasoning Callback for reasoning_content chunks
+#' @param on_content Callback for content chunks
+#' @param on_tool_call Callback when a tool call is completed (name, arguments)
+#' @return List with content, tool_calls, reasoning_content, usage
 #'
 #' @keywords internal
-chat_completion_stream <- function(messages, tools = NULL, on_chunk = function(x) {}) {
+chat_completion_stream <- function(messages, tools = NULL,
+                                    on_reasoning = function(txt) {},
+                                    on_content = function(txt) {},
+                                    on_tool_call = function(name, args) {}) {
   cfg <- get_api_config()
 
   body <- list(
@@ -116,6 +124,13 @@ chat_completion_stream <- function(messages, tools = NULL, on_chunk = function(x
 
   url <- paste0(cfg$api_base, "/chat/completions")
 
+  content_parts <- character(0)
+  reasoning_parts <- character(0)
+  tool_call_accum <- list()
+  usage <- NULL
+  has_reasoning <- FALSE
+  has_content <- FALSE
+
   response <- httr::POST(
     url = url,
     httr::add_headers(
@@ -126,9 +141,66 @@ chat_completion_stream <- function(messages, tools = NULL, on_chunk = function(x
     body = jsonlite::toJSON(body, auto_unbox = TRUE, force = TRUE),
     encode = "raw",
     httr::write_stream(function(x) {
-      lines <- strsplit(rawToChar(x), "\n")[[1]]
+      raw_text <- rawToChar(x)
+      lines <- strsplit(raw_text, "\n")[[1]]
       for (line in lines) {
-        on_chunk(line)
+        line <- trimws(line)
+        if (line == "" || !startsWith(line, "data: ")) next
+        data_str <- substring(line, 7)  # remove "data: " prefix
+        if (data_str == "[DONE]") next
+
+        chunk <- tryCatch(
+          jsonlite::fromJSON(data_str, simplifyVector = FALSE),
+          error = function(e) NULL
+        )
+        if (is.null(chunk)) next
+
+        if (!is.null(chunk$usage)) {
+          usage <- chunk$usage
+        }
+
+        delta <- chunk$choices[[1]]$delta
+        if (is.null(delta)) next
+
+        if (!is.null(delta$reasoning_content) && nchar(delta$reasoning_content) > 0) {
+          rc <- delta$reasoning_content
+          reasoning_parts <<- c(reasoning_parts, rc)
+          if (!has_reasoning) {
+            has_reasoning <<- TRUE
+            on_reasoning("\n\033[2mReasoning: \033[0m")
+          }
+          on_reasoning(rc)
+        }
+
+        if (!is.null(delta$content) && nchar(delta$content) > 0) {
+          c <- delta$content
+          content_parts <<- c(content_parts, c)
+          if (!has_content) {
+            has_content <<- TRUE
+            if (has_reasoning) {
+              on_content("\n\033[2mAgent response: \033[0m")
+            } else {
+              on_content("\033[2mAgent response: \033[0m")
+            }
+          }
+          on_content(c)
+        }
+
+        if (!is.null(delta$tool_calls)) {
+          for (tc in delta$tool_calls) {
+            idx <- tc$index
+            if (!is.null(idx)) {
+              if (is.null(tool_call_accum[[as.character(idx + 1)]])) {
+                tool_call_accum[[as.character(idx + 1)]] <<- list(id = "", name = "", arguments = "")
+              }
+              entry <- tool_call_accum[[as.character(idx + 1)]]
+              if (!is.null(tc$id)) entry$id <- tc$id
+              if (!is.null(tc$`function`$name)) entry$name <- paste0(entry$name, tc$`function`$name)
+              if (!is.null(tc$`function`$arguments)) entry$arguments <- paste0(entry$arguments, tc$`function`$arguments)
+              tool_call_accum[[as.character(idx + 1)]] <<- entry
+            }
+          }
+        }
       }
       TRUE
     }),
@@ -136,8 +208,33 @@ chat_completion_stream <- function(messages, tools = NULL, on_chunk = function(x
   )
 
   if (httr::status_code(response) >= 400) {
-    stop("LLM API error: ", httr::status_code(response))
+    error_body <- tryCatch(
+      httr::content(response, "text", encoding = "UTF-8"),
+      error = function(e) "Unknown error"
+    )
+    stop("LLM API error (", httr::status_code(response), "): ", error_body)
   }
+
+  content <- paste(content_parts, collapse = "")
+  reasoning <- paste(reasoning_parts, collapse = "")
+
+  tool_calls <- list()
+  for (entry in tool_call_accum) {
+    if (nchar(entry$name) > 0) {
+      tool_calls <- c(tool_calls, list(list(
+        id = entry$id,
+        type = "function",
+        "function" = list(name = entry$name, arguments = entry$arguments)
+      )))
+    }
+  }
+
+  list(
+    content = content,
+    reasoning_content = reasoning,
+    tool_calls = tool_calls,
+    usage = usage
+  )
 }
 
 #' Estimate token count (rough heuristic: 1 token ~ 3.5 chars)

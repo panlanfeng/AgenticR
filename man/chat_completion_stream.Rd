@@ -7,7 +7,11 @@
 chat_completion_stream(
   messages,
   tools = NULL,
-  on_chunk = function(x) {
+  on_reasoning = function(txt) {
+ },
+  on_content = function(txt) {
+ },
+  on_tool_call = function(name, args) {
  }
 )
 }
@@ -16,12 +20,17 @@ chat_completion_stream(
 
 \item{tools}{List of tool definitions (optional)}
 
-\item{on_chunk}{Callback for each content chunk}
+\item{on_reasoning}{Callback for reasoning_content chunks}
+
+\item{on_content}{Callback for content chunks}
+
+\item{on_tool_call}{Callback when a tool call is completed (name, arguments)}
 }
 \value{
-The complete assistant message
+List with content, tool_calls, reasoning_content, usage
 }
 \description{
-Send a streaming chat completion request
+Parses SSE stream, calls callbacks for each delta type,
+and returns the accumulated full response.
 }
 \keyword{internal}

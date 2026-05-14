@@ -274,8 +274,21 @@ process_with_agent <- function(user_input) {
       extract_memory(messages)
     }
 
-    response <- tryCatch(
-      chat_completion(messages, tools),
+    stream_result <- tryCatch(
+      chat_completion_stream(
+        messages, tools,
+        on_reasoning = function(txt) {
+          cat(txt, sep = "")
+          utils::flush.console()
+        },
+        on_content = function(txt) {
+          cat(txt, sep = "")
+          utils::flush.console()
+        },
+        on_tool_call = function(name, args) {
+          cli::cli_alert("Tool: {.fn {name}}")
+        }
+      ),
       error = function(e) {
         cli::cli_alert_danger("LLM API call failed: {conditionMessage(e)}")
         cli::cli_alert_info("Conversation state preserved. You can continue or retry.")
@@ -283,37 +296,31 @@ process_with_agent <- function(user_input) {
       }
     )
 
-    if (is.null(response)) break
-    if (length(response$choices) == 0) {
-      cli::cli_alert_danger("LLM returned no choices.")
-      break
-    }
+    if (is.null(stream_result)) break
 
-    choice <- response$choices[[1]]
-    msg <- choice$message
+    content <- stream_result$content
+    reasoning <- stream_result$reasoning_content
+    tool_calls <- stream_result$tool_calls
 
-    if (is.null(msg)) {
-      break
-    }
-
-    if (!is.null(msg$tool_calls) && length(msg$tool_calls) > 0) {
+    if (length(tool_calls) > 0) {
       assistant_msg <- list(
         role = "assistant",
-        tool_calls = msg$tool_calls,
-        content = if (is.null(msg$content)) NULL else msg$content
+        tool_calls = tool_calls,
+        content = if (nchar(content) > 0) content else NULL
       )
-      if (!is.null(msg$reasoning_content)) {
-        assistant_msg$reasoning_content <- msg$reasoning_content
+      if (nchar(reasoning) > 0) {
+        assistant_msg$reasoning_content <- reasoning
       }
       messages <- c(messages, list(assistant_msg))
 
-      for (tc in msg$tool_calls) {
+      for (tc in tool_calls) {
         tool_name <- tc$`function`$name
         tool_args <- tryCatch(
           jsonlite::fromJSON(tc$`function`$arguments, simplifyVector = FALSE),
           error = function(e) list()
         )
 
+        cat("\n")
         tool_result <- execute_tool(tool_name, tool_args)
 
         if (!is.null(tool_result) && nchar(trimws(tool_result)) > 0) {
@@ -331,22 +338,13 @@ process_with_agent <- function(user_input) {
       next
     }
 
-    if (!is.null(msg$content) && nchar(msg$content) > 0) {
-      content <- msg$content
-
+    if (nchar(content) > 0) {
       code_blocks <- extract_r_code_blocks(content)
 
       if (length(code_blocks) > 0) {
         text_only <- remove_r_code_blocks(content)
         if (nchar(trimws(text_only)) > 0) {
-          cli::cli_text(cli::col_cyan(cli::style_italic("Agent response:")))
           cat(text_only, "\n")
-          utils::flush.console()
-        }
-      } else {
-        if (nchar(trimws(content)) > 0) {
-          cli::cli_text(cli::col_cyan(cli::style_italic("Agent response:")))
-          cat(content, "\n")
           utils::flush.console()
         }
       }
@@ -355,13 +353,14 @@ process_with_agent <- function(user_input) {
         role = "assistant",
         content = content
       )
-      if (!is.null(msg$reasoning_content)) {
-        msg_entry$reasoning_content <- msg$reasoning_content
+      if (nchar(reasoning) > 0) {
+        msg_entry$reasoning_content <- reasoning
       }
       messages <- c(messages, list(msg_entry))
 
       if (length(code_blocks) > 0) {
         for (code in code_blocks) {
+          cat("\n")
           tool_result <- tool_execute_r_code(code)
           if (nchar(trimws(tool_result)) > 0) {
             cat(tool_result, "\n")
@@ -381,10 +380,6 @@ process_with_agent <- function(user_input) {
       }
 
       cat("\n")
-      break
-    }
-
-    if (!is.null(choice$finish_reason) && choice$finish_reason == "stop") {
       break
     }
   }
