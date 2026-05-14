@@ -51,6 +51,7 @@ agentic <- function(auto = TRUE, ...) {
   cli::cli_text("Type {.code /help} for assistance.")
   cli::cli_text("Session: {.file {agenticr_env$session_dir}}")
   load_r_history()
+  enable_tab_completion()
   cat("\n")
 
   cfg <- tryCatch(get_api_config(), error = function(e) {
@@ -442,9 +443,12 @@ load_r_history <- function() {
   }
 }
 
-#' Append R code to the history file for up-arrow recall
+#' Enable tab completion in the readline REPL
 #'
 #' @keywords internal
+enable_tab_completion <- function() {
+  rc.settings(ipck = TRUE, files = TRUE, func = TRUE, args = TRUE)
+}
 write_r_history <- function(code) {
   if (is.null(agenticr_env$r_history_file)) return()
   dir.create(dirname(agenticr_env$r_history_file), showWarnings = FALSE, recursive = TRUE)
