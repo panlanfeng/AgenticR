@@ -267,6 +267,26 @@ load_config <- function() {
     max_rounds = 10
   )
 
+  # 1. Config file overrides defaults
+  config_file <- file.path(
+    Sys.getenv("HOME", unset = "~"),
+    ".agenticr",
+    "config.yml"
+  )
+
+  if (file.exists(config_file)) {
+    file_cfg <- tryCatch(
+      yaml::read_yaml(config_file, eval.expr = FALSE),
+      error = function(e) list()
+    )
+    for (name in names(file_cfg)) {
+      if (!is.null(file_cfg[[name]]) && !identical(file_cfg[[name]], "")) {
+        cfg[[name]] <- file_cfg[[name]]
+      }
+    }
+  }
+
+  # 2. Environment variables override config file
   auto <- auto_detect_key()
   if (!is.null(auto)) {
     cfg$api_key <- auto$api_key
@@ -286,30 +306,6 @@ load_config <- function() {
   env_model <- Sys.getenv("AGENTICR_MODEL", unset = "")
   if (nchar(env_model) > 0) {
     cfg$api_model <- env_model
-  }
-
-  config_file <- file.path(
-    Sys.getenv("HOME", unset = "~"),
-    ".agenticr",
-    "config.yml"
-  )
-
-  if (file.exists(config_file)) {
-    file_cfg <- tryCatch(
-      yaml::read_yaml(config_file, eval.expr = FALSE),
-      error = function(e) list()
-    )
-    for (name in names(file_cfg)) {
-      if (!is.null(file_cfg[[name]]) && !identical(file_cfg[[name]], "")) {
-        if (cfg[[name]] == "" || is.null(cfg[[name]])) {
-          cfg[[name]] <- file_cfg[[name]]
-        }
-      }
-    }
-  }
-
-  if (cfg$api_key == "") {
-    cfg$api_key <- Sys.getenv("AGENTICR_API_KEY", unset = "")
   }
 
   cfg
