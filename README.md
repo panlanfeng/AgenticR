@@ -1,8 +1,17 @@
 # AgenticR — Turn R console into AI Agent
 
-Rethink about coding console and AI agent UI. Their user experiences are so similar. Do we really need two separte places, one for code and and one for LLM instructions? Isolating the two causes context loss for agent. AI is smart enough to know what should goes to LLM and what should go to interpretor.
+Rethink about R console and AI agent UI. Their user experiences are so similar. Do we really need two separte places, one for code and and one for LLM instructions? Isolating the two causes context loss for agent. AI is smart enough to know what should goes to LLM and what should go to interpretor.
 
-How about an AI agent directly live in R console. Uers type natural langauge or R code in the R console directly, no mode switch, no llm overhead. That's why I want to bring AgenticR. AgenticR auto detects your intention: it executes R code in the console normal with no LLM overhead; it routes natural languages to the AI agent. 
+How about an AI agent directly live in R console. Uers type natural langauge or R code in the R console directly, no mode switch, no llm overhead for normal code. Have a try on AgenticR. AgenticR auto detects your intention: it executes R code in the console normal with no LLM overhead; it routes natural languages to the AI agent. 
+
+Highlights:
+- Use any grammar to write code
+- Normal code still runs the same; natural language being translated and executed
+- Agent skills and MCP
+- AGENTS.md
+- Memory, auto learning from conversation
+- Context awareness, knows the code you ran
+- System reminder. AgenticR knows it if you switch working directory
 
 
 ```r
@@ -11,14 +20,14 @@ How about an AI agent directly live in R console. Uers type natural langauge or 
 > mean of mpg by cylinder in mtcars, then make a bar chart
 # Agent inspects the data, computes group means, creates a ggplot2 chart.
 
-> mtcars | group by wt | mean(x) for x in (carb, gear, am) # agenticR translates bad grammar into legitimate code
+> mtcars | group by wt | mean(x) for x in (carb, gear, am) # agenticR translates bad but reasonable grammar into legitimate code
         > library(dplyr)
         mtcars |>
         group_by(wt) |>
         summarise(across(c(carb, gear, am), mean))
 
-
-> mtcars | gg_point(mpg, wt) + hline(y=wt), facet by cyl  # no need to remember the long list of function names
+# Don't worry if you cannot remember the long list of function names
+> mtcars | gg_point(mpg, wt) + hline(y=wt), facet by cyl   # any grammar that makes sense
 
 > load mtcars and write a shiny app to visualize the data # it will build and run the shinyApp
 
@@ -108,25 +117,6 @@ agentic_config(temperature = 0.0)  # deterministic output
 
 ## Features
 
-### AI-Powered REPL
-
-```
-> mean of mpg by cylinder in mtcars?
-> head(mtcars)
-                   mpg cyl disp  hp drat    wt  qsec vs am gear carb
-Mazda RX4         21.0   6  160 110 3.90 2.620 16.46  0  1    4    4
-Agent response:
-Mean MPG: 4-cyl 26.7, 6-cyl 19.7, 8-cyl 15.1
-```
-
-### Direct R code execution (zero latency)
-
-Valid R code is executed directly — parsed and evaluated in the current session with no LLM call. Assignment creates persistent variables, plots render in the Plots pane.
-
-### Error interceptor
-
-`agentic_enable()` hooks into R's error handler. Natural language typed at the standard `>` prompt that causes an error is automatically routed to the agent.
-
 ### Agent tools
 
 | Tool | Purpose |
@@ -174,20 +164,6 @@ mcp_servers:
     args: ["-y", "@anthropic/mcp-filesystem", "/path"]
 ```
 
-
-### Conversation memory
-
-At 50K tokens of session growth, a sub-agent extracts persistent memory to `~/.agenticr/MEMORY.md`: user profile, environment learnings, feedback, and project context. The file path is mentioned in stable context — the agent can `read_file` it when needed.
-
-### AGENTS.md
-
-Place `~/.agenticr/AGENTS.md` (global) or `./AGENTS.md` (project) files to inject custom instructions into every agentic session. Combine with skills for layered customization:
-
-```
-# ~/.agenticr/AGENTS.md
-Always use base R graphics instead of ggplot2.
-Prefer data.table over dplyr for large datasets.
-```
 
 ## REPL Commands
 
