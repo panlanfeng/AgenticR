@@ -93,6 +93,110 @@ get_tool_definitions <- function() {
     list(
       type = "function",
       "function" = list(
+        name = "get_function_help",
+        description = paste0(
+          "Get R documentation for a function. Returns the help page content ",
+          "including description, usage, arguments, and examples. ",
+          "Use this when unsure about a function's syntax or parameters."
+        ),
+        parameters = list(
+          type = "object",
+          properties = list(
+            name = list(
+              type = "string",
+              description = "Name of the R function to look up"
+            )
+          ),
+          required = list("name")
+        )
+      )
+    ),
+    list(
+      type = "function",
+      "function" = list(
+        name = "grep_search",
+        description = paste0(
+          "Search file contents for a regex pattern. Uses ripgrep (rg) if ",
+          "available, grep as fallback. Returns matching lines with file ",
+          "paths. Use to find code, function definitions, or any content ",
+          "across files."
+        ),
+        parameters = list(
+          type = "object",
+          properties = list(
+            pattern = list(
+              type = "string",
+              description = "Regex pattern to search for"
+            ),
+            path = list(
+              type = "string",
+              description = "Directory or file to search in (default: current directory)"
+            ),
+            context_lines = list(
+              type = "integer",
+              description = "Lines of context around each match (default: 2)"
+            )
+          ),
+          required = list("pattern")
+        )
+      )
+    ),
+    list(
+      type = "function",
+      "function" = list(
+        name = "file_edit",
+        description = paste0(
+          "Replace a string in a file. The old_string must be unique -- ",
+          "provide enough surrounding text to identify the exact occurrence. ",
+          "If multiple matches exist, add more context lines to make it unique."
+        ),
+        parameters = list(
+          type = "object",
+          properties = list(
+            path = list(
+              type = "string",
+              description = "Path to the file to edit"
+            ),
+            old_string = list(
+              type = "string",
+              description = "The exact text to replace (must match exactly, including whitespace)"
+            ),
+            new_string = list(
+              type = "string",
+              description = "The replacement text"
+            )
+          ),
+          required = list("path", "old_string", "new_string")
+        )
+      )
+    ),
+    list(
+      type = "function",
+      "function" = list(
+        name = "file_write",
+        description = paste0(
+          "Create or overwrite a file with new content. Use to write new ",
+          "files or completely replace existing ones."
+        ),
+        parameters = list(
+          type = "object",
+          properties = list(
+            path = list(
+              type = "string",
+              description = "Path to the file to write"
+            ),
+            content = list(
+              type = "string",
+              description = "The full content to write to the file"
+            )
+          ),
+          required = list("path", "content")
+        )
+      )
+    ),
+    list(
+      type = "function",
+      "function" = list(
         name = "install_package",
         description = paste0(
           "Request to install an R package. The user will be prompted for ",
@@ -127,6 +231,10 @@ execute_tool <- function(tool_name, arguments) {
     get_dataframe_info = tool_get_dataframe_info(arguments$name),
     search_variables = tool_search_variables(arguments$pattern),
     read_file = tool_read_file(arguments$path),
+    get_function_help = tool_get_function_help(arguments$name),
+    grep_search = tool_grep_search(arguments$pattern, arguments$path, arguments$context_lines),
+    file_edit = tool_file_edit(arguments$path, arguments$old_string, arguments$new_string),
+    file_write = tool_file_write(arguments$path, arguments$content),
     install_package = tool_install_package(arguments$name),
     paste0("Unknown tool: ", tool_name)
   )
@@ -285,6 +393,165 @@ tool_read_file <- function(path) {
   }
 
   paste(content, collapse = "\n")
+}
+
+#' Get R function documentation
+#'
+#' @keywords internal
+tool_get_function_help <- function(name) {
+  if (is.null(name) || nchar(trimws(name)) == 0) {
+    return("Error: No function name provided")
+  }
+
+  help_text <- utils::capture.output(
+    suppressMessages(
+      tryCatch(
+        help(name, help_type = "text"),
+        error = function(e) paste0("Error: ", conditionMessage(e))
+      )
+    )
+  )
+
+  help_text <- help_text[nchar(trimws(help_text)) > 0]
+
+  if (length(help_text) == 0) {
+    return(paste0("No documentation found for '", name, "'"))
+  }
+
+  if (length(help_text) > 80) {
+    help_text <- c(help_text[1:80], paste0("... [", length(help_text) - 80, " more lines]"))
+  }
+
+  paste(help_text, collapse = "\n")
+}
+
+#' Search file contents for a regex pattern using rg or grep
+#'
+#' @keywords internal
+tool_grep_search <- function(pattern, path = ".", context_lines = 2) {
+  if (is.null(pattern) || nchar(trimws(pattern)) == 0) {
+    return("Error: No search pattern provided")
+  }
+
+  resolved <- path.expand(
+    if (is.null(path) || nchar(trimws(path)) == 0) "." else path
+  )
+  if (!grepl("^[/~]", resolved)) {
+    resolved <- file.path(getwd(), resolved)
+  }
+
+  rg <- Sys.which("rg")
+  if (nzchar(rg)) {
+    cmd <- sprintf("rg --color=never -C %d %s %s 2>&1",
+                   as.integer(context_lines), shQuote(pattern), shQuote(resolved))
+  } else {
+    cmd <- sprintf("grep -rnH --color=never %s %s 2>&1",
+                   shQuote(pattern), shQuote(resolved))
+  }
+
+  out <- tryCatch(
+    suppressWarnings(system(cmd, intern = TRUE, ignore.stderr = TRUE)),
+    error = function(e) character(0)
+  )
+
+  if (length(out) == 0 || all(nchar(trimws(out)) == 0)) {
+    return(paste0("No matches for '", pattern, "' in ", resolved))
+  }
+
+  if (length(out) > 40) {
+    out <- c(out[1:40], paste0("... (", length(out) - 40, " more matches)"))
+  }
+
+  result <- paste(out, collapse = "\n")
+  if (nchar(result) > 4000) {
+    result <- paste0(substr(result, 1, 4000), "\n... [output truncated]")
+  }
+  result
+}
+
+#' Replace a unique string in a file
+#'
+#' @keywords internal
+tool_file_edit <- function(path, old_string, new_string) {
+  if (is.null(path) || nchar(trimws(path)) == 0) {
+    return("Error: No file path provided")
+  }
+  if (is.null(old_string) || nchar(old_string) == 0) {
+    return("Error: No old_string provided")
+  }
+
+  resolved <- path.expand(path)
+  if (!grepl("^[/~]", resolved)) {
+    resolved <- file.path(getwd(), resolved)
+  }
+
+  if (!file.exists(resolved)) {
+    return(paste0("File not found: ", resolved))
+  }
+
+  content <- tryCatch(
+    readLines(resolved, warn = FALSE),
+    error = function(e) return(paste0("Error reading file: ", conditionMessage(e)))
+  )
+  if (is.character(content)) {
+    content <- paste(content, collapse = "\n")
+  }
+
+  count <- 0
+  pos <- 1
+  while (TRUE) {
+    found <- regexpr(old_string, substr(content, pos, nchar(content)), fixed = TRUE)[1]
+    if (found == -1) break
+    count <- count + 1
+    pos <- pos + found + nchar(old_string) - 1
+  }
+
+  if (count == 0) {
+    return(paste0("No match found for the given old_string in ", resolved))
+  }
+  if (count > 1) {
+    return(paste0("Found ", count, " matches -- old_string must be unique. Provide more context to make it unique."))
+  }
+
+  new_content <- sub(old_string, new_string, content, fixed = TRUE)
+
+  tryCatch(
+    writeLines(new_content, resolved),
+    error = function(e) return(paste0("Error writing file: ", conditionMessage(e)))
+  )
+
+  paste0("Replaced 1 occurrence in ", resolved)
+}
+
+#' Create or overwrite a file
+#'
+#' @keywords internal
+tool_file_write <- function(path, content) {
+  if (is.null(path) || nchar(trimws(path)) == 0) {
+    return("Error: No file path provided")
+  }
+  if (is.null(content)) {
+    content <- ""
+  }
+
+  resolved <- path.expand(path)
+  if (!grepl("^[/~]", resolved)) {
+    resolved <- file.path(getwd(), resolved)
+  }
+
+  dir_path <- dirname(resolved)
+  if (!dir.exists(dir_path)) {
+    dir.create(dir_path, recursive = TRUE, showWarnings = FALSE)
+  }
+
+  tryCatch(
+    writeLines(content, resolved),
+    error = function(e) return(paste0("Error writing file: ", conditionMessage(e)))
+  )
+
+  size <- file.info(resolved)$size
+  if (is.na(size)) size <- 0
+  paste0("Wrote ", size, " bytes to ", resolved)
 }
 
 #' Request to install a package

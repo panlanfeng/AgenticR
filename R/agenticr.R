@@ -6,7 +6,7 @@
 #'
 #' @name agenticr
 #' @keywords internal
-#' @importFrom utils tail globalVariables
+#' @importFrom utils tail globalVariables help
 "_PACKAGE"
 
 utils::globalVariables("output_lines")
