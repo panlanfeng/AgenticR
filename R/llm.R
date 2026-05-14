@@ -169,7 +169,7 @@ chat_completion_stream <- function(messages, tools = NULL,
           reasoning_parts <<- c(reasoning_parts, rc)
           if (!has_reasoning) {
             has_reasoning <<- TRUE
-            on_reasoning("\n\033[2mReasoning: \033[0m")
+            on_reasoning("\n\033[2mReasoning: ")
           }
           on_reasoning(rc)
         }
@@ -180,15 +180,20 @@ chat_completion_stream <- function(messages, tools = NULL,
           if (!has_content) {
             has_content <<- TRUE
             if (has_reasoning) {
-              on_content("\n\033[2mAgent response: \033[0m")
+              on_content("\n\033[2mAgent response: ")
             } else {
-              on_content("\033[2mAgent response: \033[0m")
+              on_content("\033[2mAgent response: ")
             }
           }
           on_content(c)
         }
 
         if (!is.null(delta$tool_calls)) {
+          if (has_reasoning || has_content) {
+            on_reasoning("\033[0m")
+            has_reasoning <<- FALSE
+            has_content <<- FALSE
+          }
           for (tc in delta$tool_calls) {
             idx <- tc$index
             if (!is.null(idx)) {
@@ -216,6 +221,10 @@ chat_completion_stream <- function(messages, tools = NULL,
     err_text <- trimws(err_text)
     if (nchar(err_text) > 300) err_text <- substr(err_text, 1, 300)
     stop("LLM API error (", httr::status_code(response), "): ", err_text)
+  }
+
+  if (has_reasoning || has_content) {
+    on_reasoning("\033[0m")
   }
 
   content <- paste(content_parts, collapse = "")
