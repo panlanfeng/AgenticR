@@ -33,6 +33,7 @@ agentic <- function(auto = TRUE, ...) {
   on.exit({
     agenticr_env$is_active <- FALSE
     agenticr_env$conversation <- list()
+    mcp_disconnect_all()
   })
 
   cli::cli_h1("AgenticR - AI-Powered R Console")
@@ -209,6 +210,10 @@ process_input <- function(input) {
 process_with_agent <- function(user_input) {
   cfg <- get_api_config()
   tools <- get_tool_definitions()
+  mcp_tools <- mcp_all_tools()
+  if (length(mcp_tools) > 0) {
+    tools <- c(tools, mcp_tools)
+  }
 
   messages <- list(list(role = "system", content = SYSTEM_PROMPT))
 
@@ -219,6 +224,13 @@ process_with_agent <- function(user_input) {
       messages <- c(messages, list(list(
         role = "user",
         content = paste0("[AGENTS.md -- user instructions]\n", agents_md)
+      )))
+    }
+    skill_prompts <- get_skill_prompts()
+    if (nchar(skill_prompts) > 0) {
+      messages <- c(messages, list(list(
+        role = "user",
+        content = skill_prompts
       )))
     }
     messages <- c(messages, list(list(
@@ -517,8 +529,12 @@ handle_slash_command <- function(input) {
       cli::cli_li("{.code /clear} - Clear conversation history")
       cli::cli_li("{.code /vars} - List variables in global environment")
       cli::cli_li("{.code /info <name>} - Show info about a variable")
+      cli::cli_li("{.code /skills} - List installed skills")
+      cli::cli_li("{.code /mcp} - List MCP servers")
       cli::cli_li("{.code exit()} or {.kbd Ctrl+C} - Exit agentic session")
     },
+    "/skills" = agentic_skills(),
+    "/mcp" = agentic_mcp(),
     "/config" = {
       cfg <- get_api_config()
       print.agenticr_config(cfg)

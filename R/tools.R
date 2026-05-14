@@ -236,7 +236,13 @@ execute_tool <- function(tool_name, arguments) {
     file_edit = tool_file_edit(arguments$path, arguments$old_string, arguments$new_string),
     file_write = tool_file_write(arguments$path, arguments$content),
     install_package = tool_install_package(arguments$name),
-    paste0("Unknown tool: ", tool_name)
+    {
+      if (startsWith(tool_name, "mcp_")) {
+        mcp_execute_tool(tool_name, arguments)
+      } else {
+        paste0("Unknown tool: ", tool_name)
+      }
+    }
   )
 }
 
