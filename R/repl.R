@@ -96,16 +96,20 @@ agentic <- function(auto = TRUE, ...) {
 
     input <- read_complete_input(input)
 
-    tryCatch(
+    result <- tryCatch(
       process_input(input),
       interrupt = function(e) {
         cli::cli_alert_warning("Interrupted.")
+        NULL
       },
       error = function(e) {
         cli::cli_alert_danger("Error: {conditionMessage(e)}")
         utils::flush.console()
+        NULL
       }
     )
+
+    write_turn_history(input, result)
 
     utils::flush.console()
   }
@@ -168,7 +172,7 @@ process_input <- function(input) {
   is_nl <- is_natural_language(input)
 
   if (!is_nl) {
-    output <- tryCatch({
+    result <- tryCatch({
       con <- textConnection("output_lines", open = "w", local = TRUE)
       sink(con, type = "output")
       sink(con, type = "message")
@@ -191,7 +195,20 @@ process_input <- function(input) {
         cat(output, "\n")
         utils::flush.console()
       }
-      TRUE
+
+      conv_msg <- paste0("[R code executed]\n", input)
+      if (nchar(trimws(output)) > 0) {
+        conv_msg <- paste0(conv_msg, "\n\nOutput:\n", output)
+      }
+      agenticr_env$conversation <- c(
+        agenticr_env$conversation,
+        list(list(role = "user", content = conv_msg))
+      )
+      if (length(agenticr_env$conversation) > 20) {
+        agenticr_env$conversation <- tail(agenticr_env$conversation, 20)
+      }
+
+      list(nl = FALSE, output = output)
     }, error = function(e) {
       tryCatch({
         sink(type = "message")
@@ -202,17 +219,18 @@ process_input <- function(input) {
       if (grepl("could not find function", error_msg) ||
           grepl("unexpected", error_msg) ||
           grepl("object .* not found", error_msg)) {
-        return(FALSE)
+        process_with_agent(input)
+        return(list(nl = TRUE, response = tail(agenticr_env$conversation, 1)[[1]]$content %||% ""))
       }
       cli::cli_alert_danger("{error_msg}")
-      return(NA)
+      list(nl = FALSE, output = "", error = error_msg)
     })
 
-    if (identical(output, TRUE)) return(invisible())
-    if (identical(output, NA)) return(invisible())
+    return(result)
   }
 
   process_with_agent(input)
+  list(nl = TRUE, response = tail(agenticr_env$conversation, 1)[[1]]$content %||% "")
 }
 
 #' Process natural language input through the LLM agent
@@ -404,31 +422,37 @@ process_with_agent <- function(user_input) {
   }
 
   agenticr_env$conversation <- conv
-  write_turn_history(user_input, messages)
   utils::flush.console()
 }
 
 #' Write a turn to the session history file
 #'
 #' @keywords internal
-write_turn_history <- function(user_input, messages) {
+write_turn_history <- function(user_input, result) {
   if (is.null(agenticr_env$history_file)) return()
   agenticr_env$turn_counter <- agenticr_env$turn_counter + 1L
 
-  final_response <- ""
-  for (m in rev(messages)) {
-    if (!is.null(m$role) && m$role == "assistant" && !is.null(m$content) && nchar(m$content) > 0) {
-      final_response <- substr(m$content, 1, 2000)
-      break
-    }
-  }
+  turn_type <- if (is.null(result)) "unknown" else if (isTRUE(result$nl)) "nl" else "r"
 
   record <- list(
     turn = agenticr_env$turn_counter,
     timestamp = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
-    input = substr(user_input, 1, 500),
-    response = final_response
+    type = turn_type,
+    input = substr(user_input, 1, 500)
   )
+
+  if (turn_type == "r") {
+    if (!is.null(result$output) && nchar(trimws(result$output)) > 0) {
+      record$output <- substr(result$output, 1, 2000)
+    }
+    if (!is.null(result$error)) {
+      record$error <- result$error
+    }
+  } else if (turn_type == "nl") {
+    if (!is.null(result$response) && nchar(result$response) > 0) {
+      record$response <- substr(result$response, 1, 2000)
+    }
+  }
 
   line <- tryCatch(
     jsonlite::toJSON(record, auto_unbox = TRUE, force = TRUE),

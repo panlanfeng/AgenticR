@@ -31,7 +31,7 @@ Highlights:
 
 
 >library(ggplot2); df <- data.frame(x1 = 2.62, x2 = 3.57, y1 = 21.0, y2 = 15.0) #normal R code execute normally
-# the I forgot how to make a ggplot. Just type your ideas
+# the I forgot ggplot grammar. Just type the ideas
 > mtcars, df > ggplot + point(wt, mpg) + curve(x1, y1, xend=x2, yend=y2, color ="curve") + segment(x=x1, y=y1, xend=x2, yend=y2, color="segment")
 
 > load mtcars and write a shiny app to visualize the data # it will build and run the shinyApp
