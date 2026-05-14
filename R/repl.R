@@ -25,6 +25,7 @@ agentic <- function(auto = TRUE, ...) {
   agenticr_env$session_start <- Sys.time()
   agenticr_env$last_memory_extract_tokens <- 0L
   agenticr_env$total_session_tokens <- 0L
+  agenticr_env$active_skills <- list()
   agenticr_env$ask_permission <- function(prompt) {
     cli::cli_alert_warning(paste0("Permission required: ", prompt))
     ans <- readline("Proceed? [y/N] ")
@@ -227,11 +228,11 @@ process_with_agent <- function(user_input) {
         content = paste0("[AGENTS.md -- user instructions]\n", agents_md)
       )))
     }
-    skill_prompts <- get_skill_prompts()
-    if (nchar(skill_prompts) > 0) {
+    active <- get_active_skill_prompts()
+    if (nchar(active) > 0) {
       messages <- c(messages, list(list(
         role = "user",
-        content = skill_prompts
+        content = active
       )))
     }
     messages <- c(messages, list(list(
@@ -536,6 +537,8 @@ handle_slash_command <- function(input) {
       cli::cli_li("{.code /vars} - List variables in global environment")
       cli::cli_li("{.code /info <name>} - Show info about a variable")
       cli::cli_li("{.code /skills} - List installed skills")
+      cli::cli_li("{.code /skill <name>} - Activate a skill")
+      cli::cli_li("{.code /skill:off <name>} - Deactivate a skill")
       cli::cli_li("{.code /mcp} - List MCP servers")
       cli::cli_li("{.code exit()} or {.kbd Ctrl+C} - Exit agentic session")
     },
@@ -553,7 +556,20 @@ handle_slash_command <- function(input) {
       cat(tool_search_variables(".*"), "\n")
     },
     {
-      if (grepl("^/info\\s", input)) {
+      if (grepl("^/skill:off\\s", input)) {
+        skill_name <- trimws(sub("^/skill:off\\s+", "", input))
+        agenticr_env$active_skills[[skill_name]] <- NULL
+        cli::cli_alert_success("Skill '{skill_name}' deactivated.")
+      } else if (grepl("^/skill\\s", input)) {
+        skill_name <- trimws(sub("^/skill\\s+", "", input))
+        all_skills <- load_skills()
+        if (is.null(all_skills[[skill_name]])) {
+          cli::cli_alert_warning("Skill '{skill_name}' not installed. Use agentic_install_skill() to add it.")
+        } else {
+          agenticr_env$active_skills[[skill_name]] <- TRUE
+          cli::cli_alert_success("Skill '{skill_name}' activated for this session.")
+        }
+      } else if (grepl("^/info\\s", input)) {
         var_name <- trimws(sub("^/info\\s+", "", input))
         cat(tool_get_dataframe_info(var_name), "\n")
       } else {

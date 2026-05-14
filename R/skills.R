@@ -49,6 +49,26 @@ get_skill_prompts <- function() {
   paste(blocks, collapse = "\n\n")
 }
 
+#' Get prompts for only the currently active skills
+#'
+#' @keywords internal
+get_active_skill_prompts <- function() {
+  if (length(agenticr_env$active_skills) == 0) return("")
+  all_skills <- load_skills()
+  blocks <- character(0)
+  for (name in names(agenticr_env$active_skills)) {
+    s <- all_skills[[name]]
+    if (is.null(s)) next
+    blocks <- c(blocks, paste0(
+      "[Active skill: ", s$name, "]\n",
+      "Apply the following instructions:\n\n",
+      s$content, "\n\n",
+      "[/Active skill: ", s$name, "]"
+    ))
+  }
+  paste(blocks, collapse = "\n\n")
+}
+
 #' Install a skill from a URL
 #'
 #' Downloads a SKILL.md file from a URL and saves it to the skills directory.
