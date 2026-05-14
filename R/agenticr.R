@@ -35,7 +35,8 @@ agenticr_env$total_session_tokens <- 0L
 .onAttach <- function(libname, pkgname) {
   packageStartupMessage(
     "AgenticR v", utils::packageVersion("agenticr"), "\n",
+    "Type 'agentic_setup()' to configure your API key.\n",
     "Type 'agentic()' to start AI-assisted R session.\n",
-    "Type 'agentic_config()' to set up your API key."
+    "Type 'agentic_providers()' to see supported providers."
   )
 }

@@ -4,20 +4,17 @@
 \alias{agentic_config}
 \title{Read and manage configuration}
 \usage{
-agentic_config(api_key = NULL, api_base = NULL, api_model = NULL, save = FALSE)
+agentic_config(..., save = FALSE)
 }
 \arguments{
-\item{api_key}{Your API key (sk-...)}
-
-\item{api_base}{API base URL (e.g. https://api.deepseek.com/v1)}
-
-\item{api_model}{Model name (e.g. deepseek-chat)}
+\item{...}{Named arguments to set (api_key, api_base, api_model, provider, temperature, max_tokens)}
 
 \item{save}{If TRUE, save configuration to ~/.agenticr/config.yml}
 }
 \description{
-Configuration can come from:
+Configuration sources (in priority order):
 1. Environment variables: AGENTICR_API_KEY, AGENTICR_API_BASE, AGENTICR_MODEL
-2. Config file: ~/.agenticr/config.yml
-3. In-session: agentic_config(key = "value")
+2. Provider-specific env vars: DEEPSEEK_API_KEY, OPENAI_API_KEY, etc.
+3. Config file: ~/.agenticr/config.yml
+4. In-session: agentic_config(key = "value")
 }

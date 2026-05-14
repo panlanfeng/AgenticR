@@ -2,11 +2,11 @@
 % Please edit documentation in R/llm.R
 \name{estimate_tokens}
 \alias{estimate_tokens}
-\title{Estimate token count (rough heuristic: 1 token ≈ 3.5 chars)}
+\title{Estimate token count (rough heuristic: 1 token ~ 3.5 chars)}
 \usage{
 estimate_tokens(messages)
 }
 \description{
-Estimate token count (rough heuristic: 1 token ≈ 3.5 chars)
+Estimate token count (rough heuristic: 1 token ~ 3.5 chars)
 }
 \keyword{internal}

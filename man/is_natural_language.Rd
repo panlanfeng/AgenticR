@@ -14,8 +14,8 @@ TRUE if input looks like natural language
 }
 \description{
 Uses multi-factor heuristic:
-- Word count >= 5 → likely NL
+- Word count >= 5 -> likely NL
 - Contains common NL patterns (question words, punctuation)
-- Contains R-specific syntax → likely R
+- Contains R-specific syntax -> likely R
 }
 \keyword{internal}
