@@ -7,8 +7,23 @@
 \title{AgenticR: AI-Powered R Console Assistant}
 \description{
 Type natural language or incorrect R code directly in the R console.
-AgenticR routes natural language to an LLM agent and executes normal
-R code directly in the current session.
+AgenticR routes natural language to an LLM agent that generates and
+executes R code in the current R session. Valid R code is executed
+directly with zero latency — no LLM overhead.
+}
+\details{
+Key features:
+* AI-assisted interactive REPL via `agentic()`
+* 15+ LLM provider presets with auto-detection
+* 9 agent tools (code execution, data inspection, file ops, search)
+* Real-time token streaming
+* Cache-preserving context design for LLM prompt caching
+* Opt-in skills system for prompt templates
+* MCP (Model Context Protocol) support for external tools
+* Multi-line R code continuation
+* Error interceptor for standard R console
+* Conversation memory extraction via sub-agent
+* AGENTS.md support for custom instructions
 }
 \author{
 \strong{Maintainer}: Lanfeng Pan \email{panlanfeng@gmail.com}
