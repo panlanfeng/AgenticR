@@ -68,7 +68,7 @@ is_natural_language <- function(input) {
   }
 
   # Punctuation patterns: ends with ? or ! and no math operators
-  if (grepl("[?.!]$", input) && !grepl("[=+\\-*/<>(){}]", input)) {
+  if (grepl("[?.!]$", input) && !grepl("[=+*/<>(){}-]", input)) {
     word_count <- length(strsplit(input, "\\s+")[[1]])
     if (word_count >= 3) {
       return(TRUE)
