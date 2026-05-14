@@ -1,11 +1,32 @@
 # AgenticR — Turn R console into AI Agent
 
-Type natural language or incorrect R code directly in the RStudio console. AgenticR routes natural language to an LLM agent that generates and executes R code in the current session. Valid R code executes directly with zero latency — no LLM overhead.
+Rethink about coding console and AI agent UI. Their user experiences are so similar. Do we really need two separte places, one for code and and one for LLM instructions? Isolating the two causes context loss for agent. AI is smart enough to know what should goes to LLM and what should go to interpretor.
+
+How about an AI agent directly live in R console. Uers type natural langauge or R code in the R console directly, no mode switch, no llm overhead. That's why I want to bring AgenticR. AgenticR auto detects your intention: it executes R code in the console normal with no LLM overhead; it routes natural languages to the AI agent. 
+
 
 ```r
+> library(agenticr); agentic()
+> load mtcars  # this will run `data(mtcars)`
 > mean of mpg by cylinder in mtcars, then make a bar chart
 # Agent inspects the data, computes group means, creates a ggplot2 chart.
+
+> mtcars | group by wt | mean(x) for x in (carb, gear, am) # agenticR translates bad grammar into legitimate code
+        > library(dplyr)
+        mtcars |>
+        group_by(wt) |>
+        summarise(across(c(carb, gear, am), mean))
+
+
+> mtcars | gg_point(mpg, wt) + hline(y=wt), facet by cyl  # no need to remember the long list of function names
+
+> load mtcars and write a shiny app to visualize the data # it will build and run the shinyApp
+
+> plot(mtcars$mpg, mtcars$wt) # normal R code executes normally with no llm overhead
+
 ```
+
+
 
 ## Installation
 
@@ -15,13 +36,15 @@ install.packages("remotes")
 remotes::install_github("panlanfeng/AgenticR")
 ```
 
+Or build from source: `R CMD build . && R CMD INSTALL agenticr_0.1.0.tar.gz`
+
 ## Quick Start
 
 ```r
 library(agenticr)
 
 # One-time setup (interactive wizard)
-agentic_setup()
+agentic_setup() # or directly config it in the ~/.agenticr/config.yml
 
 # Start the AI-assisted session
 agentic()

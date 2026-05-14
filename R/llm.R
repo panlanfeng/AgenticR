@@ -130,6 +130,7 @@ chat_completion_stream <- function(messages, tools = NULL,
   usage <- NULL
   has_reasoning <- FALSE
   has_content <- FALSE
+  first_chunk <- NULL
 
   response <- httr::POST(
     url = url,
@@ -142,11 +143,12 @@ chat_completion_stream <- function(messages, tools = NULL,
     encode = "raw",
     httr::write_stream(function(x) {
       raw_text <- rawToChar(x)
+      if (is.null(first_chunk)) first_chunk <<- raw_text
       lines <- strsplit(raw_text, "\n")[[1]]
       for (line in lines) {
         line <- trimws(line)
         if (line == "" || !startsWith(line, "data: ")) next
-        data_str <- substring(line, 7)  # remove "data: " prefix
+        data_str <- substring(line, 7)
         if (data_str == "[DONE]") next
 
         chunk <- tryCatch(
@@ -208,11 +210,12 @@ chat_completion_stream <- function(messages, tools = NULL,
   )
 
   if (httr::status_code(response) >= 400) {
-    error_body <- tryCatch(
-      httr::content(response, "text", encoding = "UTF-8"),
-      error = function(e) "Unknown error"
-    )
-    stop("LLM API error (", httr::status_code(response), "): ", error_body)
+    err_text <- first_chunk
+    if (is.null(err_text)) err_text <- "Unknown error"
+    err_text <- gsub("^data: ", "", err_text)
+    err_text <- trimws(err_text)
+    if (nchar(err_text) > 300) err_text <- substr(err_text, 1, 300)
+    stop("LLM API error (", httr::status_code(response), "): ", err_text)
   }
 
   content <- paste(content_parts, collapse = "")

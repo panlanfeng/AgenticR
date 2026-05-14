@@ -306,9 +306,11 @@ process_with_agent <- function(user_input) {
     if (length(tool_calls) > 0) {
       assistant_msg <- list(
         role = "assistant",
-        tool_calls = tool_calls,
-        content = if (nchar(content) > 0) content else NULL
+        tool_calls = tool_calls
       )
+      if (nchar(content) > 0) {
+        assistant_msg$content <- content
+      }
       if (nchar(reasoning) > 0) {
         assistant_msg$reasoning_content <- reasoning
       }
