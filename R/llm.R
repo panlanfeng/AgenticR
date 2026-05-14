@@ -140,7 +140,7 @@ chat_completion_stream <- function(messages, tools = NULL, on_chunk = function(x
   }
 }
 
-#' Estimate token count (rough heuristic: 1 token ≈ 3.5 chars)
+#' Estimate token count (rough heuristic: 1 token ~ 3.5 chars)
 #'
 #' @keywords internal
 estimate_tokens <- function(messages) {
@@ -191,30 +191,113 @@ run_compaction <- function(messages) {
   agenticr_env$conversation <- tail(agenticr_env$conversation, 4)
 
   sys_msg <- messages[[1]]
-  ctx_msg <- NULL
+  new_msgs <- list(sys_msg)
+
   i <- 2
-  if (length(messages) > 1 && !is.null(messages[[2]]$content) &&
-      grepl("^\\[Stable context\\]", messages[[2]]$content)) {
-    ctx_msg <- messages[[2]]
-    i <- 3
+  while (i <= length(messages)) {
+    msg_content <- messages[[i]]$content
+    if (!is.null(msg_content) && grepl("^\\[AGENTS\\.md", msg_content)) {
+      new_msgs <- c(new_msgs, messages[i])
+      i <- i + 1
+    } else {
+      break
+    }
   }
-  sum_msg <- NULL
+
+  ctx_msg <- NULL
+  if (i <= length(messages) && !is.null(messages[[i]]$content) &&
+      grepl("^\\[Stable context\\]", messages[[i]]$content)) {
+    ctx_msg <- messages[[i]]
+    i <- i + 1
+  }
+  if (!is.null(ctx_msg)) new_msgs <- c(new_msgs, list(ctx_msg))
+
   if (i <= length(messages) && !is.null(messages[[i]]$content) &&
       grepl("^\\[Compaction summary\\]", messages[[i]]$content)) {
     i <- i + 1
   }
 
-  last_msg <- messages[[length(messages)]]
-
-  new_msgs <- list(sys_msg)
-  if (!is.null(ctx_msg)) new_msgs <- c(new_msgs, list(ctx_msg))
   new_msgs <- c(new_msgs, list(list(
     role = "user", content = agenticr_env$stable_summary
   )))
+
   if (length(agenticr_env$conversation) > 0) {
     new_msgs <- c(new_msgs, agenticr_env$conversation)
   }
-  new_msgs <- c(new_msgs, list(last_msg))
+  new_msgs <- c(new_msgs, list(messages[[length(messages)]]))
 
   new_msgs
+}
+
+#' Extract persistent memory from conversation into MEMORY.md
+#'
+#' Uses a sub-agent with the SAME context prefix (maximizing cache hit rate)
+#' to extract persistent memory from the conversation. Stores result in
+#' ~/.agenticr/MEMORY.md. Never extracts discoverable info or file paths.
+#'
+#' @keywords internal
+extract_memory <- function(messages) {
+  existing <- ""
+  if (file.exists(agenticr_env$memory_file)) {
+    existing <- tryCatch(
+      paste(readLines(agenticr_env$memory_file, warn = FALSE), collapse = "\n"),
+      error = function(e) ""
+    )
+  }
+
+  memory_prompt <- paste0(
+    "Extract information for a persistent memory file. Write in Markdown ",
+    "with these sections:\n\n",
+    "## User Profile\n",
+    "- Knowledge level, job role, preferred collaboration style\n",
+    "- How they like to receive information (concise? detailed?)\n\n",
+    "## Reflection & Learnings\n",
+    "- What did you learn from this session?\n",
+    "- Which approaches worked well?\n",
+    "- Which commands or patterns caused errors and their root cause?\n\n",
+    "## Environment Learnings\n",
+    "- R packages that work (known incompatibilities)\n",
+    "- Commands or package functions that caused issues\n\n",
+    "## Feedback & Corrections\n",
+    "- When the user corrected you, what was the mistake and the fix\n",
+    "- WHY the fix is correct -- the underlying principle\n\n",
+    "## Project Context\n",
+    "- Current project topic, purpose, and goals\n",
+    "- Key decisions the user made and WHY\n\n",
+    "## Important Files\n",
+    "- Only describe what each file CONTAINS and its ROLE, never its path or name\n\n",
+    "RULES:\n",
+    "- NEVER include file paths, coding style, git history\n",
+    "- NEVER repeat information that can be found by searching the repo\n",
+    "- Focus on WHY (intent, reasoning) not WHAT (commands, syntax)\n",
+    "- If existing memory exists, MERGE new info -- do not duplicate\n",
+    "- Keep under 600 words total\n\n"
+  )
+  if (nchar(existing) > 0) {
+    memory_prompt <- paste0(
+      memory_prompt,
+      "Existing MEMORY.md content to merge with:\n```markdown\n",
+      substr(existing, 1, 2000),
+      "\n```\n\n"
+    )
+  }
+
+  summary_msgs <- c(messages, list(list(
+    role = "user", content = memory_prompt
+  )))
+  resp <- tryCatch(
+    chat_completion(summary_msgs, tools = NULL),
+    error = function(e) NULL
+  )
+  if (is.null(resp) || length(resp$choices) == 0) return()
+
+  memory <- tryCatch(
+    resp$choices[[1]]$message$content,
+    error = function(e) ""
+  )
+  if (nchar(trimws(memory)) == 0) return()
+
+  dir.create(dirname(agenticr_env$memory_file), showWarnings = FALSE, recursive = TRUE)
+  writeLines(memory, agenticr_env$memory_file)
+  agenticr_env$last_memory_extract_tokens <- agenticr_env$total_session_tokens
 }

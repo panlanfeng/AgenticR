@@ -1,9 +1,9 @@
 #' Detect if input is natural language or R code
 #'
 #' Uses multi-factor heuristic:
-#' - Word count >= 5 → likely NL
+#' - Word count >= 5 -> likely NL
 #' - Contains common NL patterns (question words, punctuation)
-#' - Contains R-specific syntax → likely R
+#' - Contains R-specific syntax -> likely R
 #'
 #' @param input Character string to classify
 #' @return TRUE if input looks like natural language
@@ -59,7 +59,7 @@ is_natural_language <- function(input) {
 
   # Check for natural language punctuation patterns
   if (grepl("[?.!]$", input) && !grepl("[=+\\-*/<>(){}]", input)) {
-    # Ends with punctuation and no math operators → likely NL
+    # Ends with punctuation and no math operators -> likely NL
     word_count <- length(strsplit(input, "\\s+")[[1]])
     if (word_count >= 3) {
       return(TRUE)

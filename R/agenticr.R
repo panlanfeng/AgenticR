@@ -20,6 +20,13 @@ agenticr_env$stable_summary <- NULL
 agenticr_env$context_injected <- FALSE
 agenticr_env$last_known_cwd <- ""
 agenticr_env$max_context_tokens <- 128000L
+agenticr_env$memory_file <- file.path(
+  Sys.getenv("HOME", unset = "~"),
+  ".agenticr",
+  "MEMORY.md"
+)
+agenticr_env$last_memory_extract_tokens <- 0L
+agenticr_env$total_session_tokens <- 0L
 
 .onLoad <- function(libname, pkgname) {
   assign("config", load_config(), envir = agenticr_env)

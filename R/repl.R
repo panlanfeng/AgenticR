@@ -22,6 +22,8 @@ agentic <- function(auto = TRUE, ...) {
   agenticr_env$context_injected <- FALSE
   agenticr_env$stable_summary <- NULL
   agenticr_env$last_known_cwd <- getwd()
+  agenticr_env$last_memory_extract_tokens <- 0L
+  agenticr_env$total_session_tokens <- 0L
   agenticr_env$ask_permission <- function(prompt) {
     cli::cli_alert_warning(paste0("Permission required: ", prompt))
     ans <- readline("Proceed? [y/N] ")
@@ -212,6 +214,13 @@ process_with_agent <- function(user_input) {
 
   if (!agenticr_env$context_injected) {
     agenticr_env$context_injected <- TRUE
+    agents_md <- load_agents_md()
+    if (nchar(agents_md) > 0) {
+      messages <- c(messages, list(list(
+        role = "user",
+        content = paste0("[AGENTS.md -- user instructions]\n", agents_md)
+      )))
+    }
     messages <- c(messages, list(list(
       role = "user",
       content = build_stable_context()
@@ -244,6 +253,12 @@ process_with_agent <- function(user_input) {
     token_count <- estimate_tokens(messages)
     if (token_count > agenticr_env$max_context_tokens * 0.8) {
       messages <- run_compaction(messages)
+    }
+
+    agenticr_env$total_session_tokens <- token_count
+    since_last <- token_count - agenticr_env$last_memory_extract_tokens
+    if (since_last > 50000) {
+      extract_memory(messages)
     }
 
     response <- tryCatch(
@@ -400,16 +415,56 @@ SYSTEM_PROMPT <- paste0(
   "- If user declines, propose a built-in alternative."
 )
 
+#' Load AGENTS.md from global and project directories
+#'
+#' @keywords internal
+load_agents_md <- function() {
+  blocks <- character(0)
+  global_path <- file.path(
+    Sys.getenv("HOME", unset = "~"),
+    ".agenticr",
+    "AGENTS.md"
+  )
+  if (file.exists(global_path)) {
+    content <- tryCatch(
+      paste(readLines(global_path, warn = FALSE), collapse = "\n"),
+      error = function(e) ""
+    )
+    if (nchar(trimws(content)) > 0) {
+      blocks <- c(blocks, paste0("[global]\n", content))
+    }
+  }
+  cwd_path <- file.path(getwd(), "AGENTS.md")
+  if (file.exists(cwd_path)) {
+    content <- tryCatch(
+      paste(readLines(cwd_path, warn = FALSE), collapse = "\n"),
+      error = function(e) ""
+    )
+    if (nchar(trimws(content)) > 0) {
+      blocks <- c(blocks, paste0("[project]\n", content))
+    }
+  }
+  paste(blocks, collapse = "\n\n")
+}
+
 #' Build the stable context block (injected once, never changes)
 #'
 #' @keywords internal
 build_stable_context <- function() {
+  mem_note <- ""
+  if (file.exists(agenticr_env$memory_file)) {
+    mem_note <- paste0(
+      "\nMemory: use read_file to load ", agenticr_env$memory_file,
+      " -- contains user profile, environment learnings, past corrections"
+    )
+  }
   paste0(
     "[Stable context]\n",
     "R version: ", R.version.string, "\n",
     "Platform: ", R.version$platform, "\n",
     "Start time: ", Sys.time(), "\n",
-    "Working directory at start: ", getwd()
+    "Working directory at start: ", getwd(),
+    mem_note
   )
 }
 
