@@ -1,8 +1,8 @@
-# AgenticR — Turn R console into AI Agent
+# AgenticR — R package turning R console into AI Agent
 
 Rethink about R console and AI agent UI. Their user experiences are so similar. Do we really need two separte places, one for code and and one for LLM instructions? Isolating the two causes context loss for agent. AI is smart enough to know what should goes to LLM and what should go to interpretor.
 
-How about an AI agent directly live in R console. Uers type natural langauge or R code in the R console directly, no mode switch, no llm overhead for normal code. Have a try on AgenticR. AgenticR auto detects your intention: it executes R code in the console normal with no LLM overhead; it routes natural languages to the AI agent. 
+How about an AI agent directly live in R console. Uers type natural langauge or R code in the R console directly, no mode switch, no llm overhead for normal code. Have a try on AgenticR. AgenticR auto detects your intention: it executes R code in the console normal with no LLM overhead; it routes natural languages to the AI agent. AgenticR prioritizes normal code execution with no overhead; agent kicks in only when needed.
 
 Highlights:
 - Use any grammar to write code
@@ -28,6 +28,11 @@ Highlights:
 
 # Don't worry if you cannot remember the long list of function names
 > mtcars | gg_point(mpg, wt) + hline(y=wt), facet by cyl   # any grammar that makes sense
+
+
+>library(ggplot2); df <- data.frame(x1 = 2.62, x2 = 3.57, y1 = 21.0, y2 = 15.0) #normal R code execute normally
+# the I forgot how to make a ggplot. Just type your ideas
+> mtcars, df > ggplot + point(wt, mpg) + curve(x1, y1, xend=x2, yend=y2, color ="curve") + segment(x=x1, y=y1, xend=x2, yend=y2, color="segment")
 
 > load mtcars and write a shiny app to visualize the data # it will build and run the shinyApp
 

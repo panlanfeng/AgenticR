@@ -26,6 +26,13 @@ agentic <- function(auto = TRUE, ...) {
   agenticr_env$last_memory_extract_tokens <- 0L
   agenticr_env$total_session_tokens <- 0L
   agenticr_env$active_skills <- list()
+  agenticr_env$session_id <- paste0(format(Sys.time(), "%Y%m%d_%H%M%S"), "_",
+                                     paste(sample(c(0:9, letters[1:6]), 8, replace = TRUE), collapse = ""))
+  agenticr_env$session_dir <- file.path(
+    Sys.getenv("HOME", unset = "~"), ".agenticr", "sessions", agenticr_env$session_id)
+  dir.create(agenticr_env$session_dir, showWarnings = FALSE, recursive = TRUE)
+  agenticr_env$history_file <- file.path(agenticr_env$session_dir, "history.jsonl")
+  agenticr_env$turn_counter <- 0L
   agenticr_env$ask_permission <- function(prompt) {
     cli::cli_alert_warning(paste0("Permission required: ", prompt))
     ans <- readline("Proceed? [y/N] ")
@@ -42,6 +49,7 @@ agentic <- function(auto = TRUE, ...) {
   cli::cli_text("Type natural language or R code.")
   cli::cli_text("Type {.code exit()} or press {.kbd Ctrl+C} to quit.")
   cli::cli_text("Type {.code /help} for assistance.")
+  cli::cli_text("Session: {.file {agenticr_env$session_dir}}")
   cat("\n")
 
   cfg <- tryCatch(get_api_config(), error = function(e) {
@@ -396,7 +404,70 @@ process_with_agent <- function(user_input) {
   }
 
   agenticr_env$conversation <- conv
+  write_turn_history(user_input, messages)
   utils::flush.console()
+}
+
+#' Write a turn to the session history file
+#'
+#' @keywords internal
+write_turn_history <- function(user_input, messages) {
+  if (is.null(agenticr_env$history_file)) return()
+  agenticr_env$turn_counter <- agenticr_env$turn_counter + 1L
+
+  final_response <- ""
+  for (m in rev(messages)) {
+    if (!is.null(m$role) && m$role == "assistant" && !is.null(m$content) && nchar(m$content) > 0) {
+      final_response <- substr(m$content, 1, 2000)
+      break
+    }
+  }
+
+  record <- list(
+    turn = agenticr_env$turn_counter,
+    timestamp = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+    input = substr(user_input, 1, 500),
+    response = final_response
+  )
+
+  line <- tryCatch(
+    jsonlite::toJSON(record, auto_unbox = TRUE, force = TRUE),
+    error = function(e) "{}"
+  )
+
+  cat(line, "\n", file = agenticr_env$history_file, append = TRUE)
+}
+
+#' Show recent session history
+#'
+#' @keywords internal
+show_history <- function() {
+  if (is.null(agenticr_env$history_file) || !file.exists(agenticr_env$history_file)) {
+    cli::cli_alert_info("No history yet. Start a conversation first.")
+    return(invisible())
+  }
+  lines <- tryCatch(
+    readLines(agenticr_env$history_file, warn = FALSE),
+    error = function(e) character(0)
+  )
+  if (length(lines) == 0) {
+    cli::cli_alert_info("History is empty.")
+    return(invisible())
+  }
+  cli::cli_h2("Session History")
+  recent <- tail(lines, 10)
+  for (line in recent) {
+    entry <- tryCatch(
+      jsonlite::fromJSON(line, simplifyVector = FALSE),
+      error = function(e) NULL
+    )
+    if (is.null(entry)) next
+    inp <- entry$input %||% ""
+    if (nchar(inp) > 80) inp <- paste0(substr(inp, 1, 80), "...")
+    cli::cli_li("#{entry$turn} {.val {inp}}")
+  }
+  cli::cli_text("Full history: {.file {agenticr_env$history_file}}")
+  invisible()
 }
 
 SYSTEM_PROMPT <- paste0(
@@ -543,10 +614,12 @@ handle_slash_command <- function(input) {
       cli::cli_li("{.code /skill <name>} - Activate a skill")
       cli::cli_li("{.code /skill:off <name>} - Deactivate a skill")
       cli::cli_li("{.code /mcp} - List MCP servers")
+      cli::cli_li("{.code /history} - View recent session history")
       cli::cli_li("{.code exit()} or {.kbd Ctrl+C} - Exit agentic session")
     },
     "/skills" = agentic_skills(),
     "/mcp" = agentic_mcp(),
+    "/history" = show_history(),
     "/config" = {
       cfg <- get_api_config()
       print.agenticr_config(cfg)

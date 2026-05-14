@@ -44,6 +44,9 @@ agenticr_env$memory_file <- file.path(
 agenticr_env$last_memory_extract_tokens <- 0L
 agenticr_env$total_session_tokens <- 0L
 agenticr_env$active_skills <- list()
+agenticr_env$session_dir <- NULL
+agenticr_env$session_id <- NULL
+agenticr_env$history_file <- NULL
 
 .onLoad <- function(libname, pkgname) {
   assign("config", load_config(), envir = agenticr_env)
