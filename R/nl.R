@@ -1,9 +1,7 @@
 #' Detect if input is natural language or R code
 #'
-#' Uses multi-factor heuristic:
-#' - Word count >= 5 -> likely NL
-#' - Contains common NL patterns (question words, punctuation)
-#' - Contains R-specific syntax -> likely R
+#' Conservative approach: only flag as NL when there are strong NL signals
+#' or the R parser fails. When in doubt, treat as R code.
 #'
 #' @param input Character string to classify
 #' @return TRUE if input looks like natural language
@@ -20,6 +18,7 @@ is_natural_language <- function(input) {
   r_indicators <- c(
     "<-", "->", "<<-", "->>",  # Assignment
     "%>%", "%<>%", "%T>%",      # Pipes
+    "\\|>",                      # Native pipe (escaped)
     "function\\(",               # Function definition
     "^library\\(",               # Library loading
     "^require\\(",               # Require loading
@@ -31,8 +30,7 @@ is_natural_language <- function(input) {
     "^save\\(",                  # Save data
     "^data\\(",                  # Load built-in data
     "^lm\\(",                    # Linear model
-    "^glm\\(",                   # Generalized linear model
-    "\\|>"                       # Native pipe (escaped)
+    "^glm\\("                    # Generalized linear model
   )
 
   for (pattern in r_indicators) {
@@ -50,7 +48,7 @@ is_natural_language <- function(input) {
     return(FALSE)
   }
 
-  # Strong NL indicators
+  # Strong NL indicators — only these trigger NL classification
   nl_indicators <- c(
     "^what\\s", "^how\\s", "^why\\s", "^when\\s", "^where\\s",
     "^can you\\s", "^could you\\s", "^would you\\s",
@@ -69,37 +67,14 @@ is_natural_language <- function(input) {
     }
   }
 
-  # Check for natural language punctuation patterns
+  # Punctuation patterns: ends with ? or ! and no math operators
   if (grepl("[?.!]$", input) && !grepl("[=+\\-*/<>(){}]", input)) {
-    # Ends with punctuation and no math operators -> likely NL
     word_count <- length(strsplit(input, "\\s+")[[1]])
     if (word_count >= 3) {
       return(TRUE)
     }
   }
 
-  # Word count heuristic
-  words <- strsplit(input, "\\s+")[[1]]
-  word_count <- length(words)
-
-  if (word_count >= 6) {
-    # Long inputs are likely natural language
-    return(TRUE)
-  }
-
-  if (word_count >= 4) {
-    # Check for natural language function words
-    nl_words <- c("the", "a", "an", "of", "in", "on", "at", "to", "for",
-                  "with", "from", "by", "about", "into", "through", "during",
-                  "and", "or", "but", "so", "because", "if", "when", "where",
-                  "which", "who", "whom")
-    lower_words <- tolower(words)
-    nl_count <- sum(lower_words %in% nl_words)
-
-    if (nl_count >= 2) {
-      return(TRUE)
-    }
-  }
-
+  # Default: treat as R code (conservative)
   FALSE
 }

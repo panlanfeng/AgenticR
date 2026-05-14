@@ -76,7 +76,8 @@ agentic <- function(auto = TRUE, ...) {
     if (is.null(input)) break
 
     input <- trimws(input)
-    if (input == "" || input == "exit()" || input == "quit()") break
+    if (input == "exit()" || input == "quit()") break
+    if (input == "") next
 
     if (grepl("^/", input)) {
       handle_slash_command(input)

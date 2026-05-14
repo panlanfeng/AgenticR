@@ -37,13 +37,19 @@ test_that("is_natural_language handles edge cases", {
 })
 
 test_that("is_natural_language detects long NL text", {
-  expect_true(is_natural_language("calculate the average of all numeric columns grouped by category"))
-  expect_true(is_natural_language("I want to find the maximum value in column x and compare it with y"))
+  # Conservative: these parse as valid R function calls, so treated as R.
+  # The execution layer catches the failure and routes to LLM for repair.
+  expect_false(is_natural_language("calculate the average of all numeric columns grouped by category"))
+  expect_false(is_natural_language("data from the mtcars dataset with filters"))
+  expect_false(is_natural_language("analysis of the variance across groups"))
 })
 
-test_that("is_natural_language function words trigger NL", {
-  expect_true(is_natural_language("data from the mtcars dataset with filters"))
-  expect_true(is_natural_language("analysis of the variance across groups"))
+test_that("is_natural_language NL indicators still trigger correctly", {
+  # Strong NL indicators should still return TRUE
+  expect_true(is_natural_language("what is the mean of mpg?"))
+  expect_true(is_natural_language("make a plot of mpg vs hp"))
+  expect_true(is_natural_language("can you help me with this analysis?"))
+  expect_true(is_natural_language("how do I create a scatter plot?"))
 })
 
 # ============================================================================
