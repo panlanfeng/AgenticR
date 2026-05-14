@@ -6,33 +6,51 @@
 PROVIDER_PRESETS <- list(
   deepseek = list(
     name = "DeepSeek",
-    api_base = "https://api.deepseek.com/v1",
-    api_model = "deepseek-chat",
+    api_base = "https://api.deepseek.com",
+    api_model = "deepseek-v4-pro",
     env_var = "DEEPSEEK_API_KEY"
   ),
   openai = list(
     name = "OpenAI",
     api_base = "https://api.openai.com/v1",
-    api_model = "gpt-4o",
+    api_model = "gpt-5.5",
     env_var = "OPENAI_API_KEY"
   ),
   anthropic = list(
     name = "Anthropic",
     api_base = "https://api.anthropic.com/v1",
-    api_model = "claude-sonnet-4-20250514",
+    api_model = "claude-opus-4-7",
     env_var = "ANTHROPIC_API_KEY"
   ),
   google = list(
     name = "Google Gemini",
     api_base = "https://generativelanguage.googleapis.com/v1beta/openai",
-    api_model = "gemini-2.5-flash",
+    api_model = "gemini-2.5-pro",
     env_var = "GOOGLE_API_KEY"
   ),
-  groq = list(
-    name = "Groq",
-    api_base = "https://api.groq.com/openai/v1",
-    api_model = "llama-3.3-70b-versatile",
-    env_var = "GROQ_API_KEY"
+  glm = list(
+    name = "Zhipu GLM",
+    api_base = "https://open.bigmodel.cn/api/paas/v4",
+    api_model = "glm-5.1",
+    env_var = "GLM_API_KEY"
+  ),
+  kimi = list(
+    name = "Moonshot Kimi",
+    api_base = "https://api.moonshot.cn/v1",
+    api_model = "kimi-k2.6",
+    env_var = "KIMI_API_KEY"
+  ),
+  minimax = list(
+    name = "MiniMax",
+    api_base = "https://api.minimax.chat/v1",
+    api_model = "MiniMax-M2.7",
+    env_var = "MINIMAX_API_KEY"
+  ),
+  qwen = list(
+    name = "Alibaba Qwen",
+    api_base = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+    api_model = "qwen-max-latest",
+    env_var = "QWEN_API_KEY"
   ),
   xai = list(
     name = "xAI",
@@ -43,19 +61,13 @@ PROVIDER_PRESETS <- list(
   openrouter = list(
     name = "OpenRouter",
     api_base = "https://openrouter.ai/api/v1",
-    api_model = "openai/gpt-4o",
+    api_model = "openai/gpt-5.5",
     env_var = "OPENROUTER_API_KEY"
-  ),
-  together = list(
-    name = "Together AI",
-    api_base = "https://api.together.xyz/v1",
-    api_model = "meta-llama/Llama-3.3-70B-Instruct-Turbo",
-    env_var = "TOGETHER_API_KEY"
   ),
   siliconflow = list(
     name = "SiliconFlow",
     api_base = "https://api.siliconflow.cn/v1",
-    api_model = "deepseek-ai/DeepSeek-V3",
+    api_model = "deepseek-ai/DeepSeek-V3-0324",
     env_var = "SILICONFLOW_API_KEY"
   ),
   perplexity = list(
@@ -64,17 +76,17 @@ PROVIDER_PRESETS <- list(
     api_model = "sonar-pro",
     env_var = "PERPLEXITY_API_KEY"
   ),
-  fireworks = list(
-    name = "Fireworks AI",
-    api_base = "https://api.fireworks.ai/inference/v1",
-    api_model = "accounts/fireworks/models/llama-v3p3-70b-instruct",
-    env_var = "FIREWORKS_API_KEY"
-  ),
   mistral = list(
     name = "Mistral AI",
     api_base = "https://api.mistral.ai/v1",
     api_model = "mistral-large-latest",
     env_var = "MISTRAL_API_KEY"
+  ),
+  bedrock = list(
+    name = "Amazon Bedrock",
+    api_base = "https://bedrock-runtime.us-east-1.amazonaws.com",
+    api_model = "anthropic.claude-opus-4-7-v1:0",
+    env_var = "AWS_ACCESS_KEY_ID"
   ),
   custom = list(
     name = "Custom",
@@ -247,8 +259,8 @@ agentic_setup <- function() {
 load_config <- function() {
   cfg <- list(
     api_key = "",
-    api_base = "https://api.deepseek.com/v1",
-    api_model = "deepseek-chat",
+    api_base = "https://api.deepseek.com",
+    api_model = "deepseek-v4-pro",
     provider = "deepseek",
     max_tokens = 4096,
     temperature = 0.1,

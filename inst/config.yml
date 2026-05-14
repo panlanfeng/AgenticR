@@ -2,18 +2,19 @@
 #
 # Set up with: agentic_setup()
 # Or manually configure below.
+# See agentic_providers() for all supported providers and their env vars.
 
-# Provider presets (deepseek, openai, anthropic, google, groq, ...)
+# Provider preset name
 provider: "deepseek"
 
 # Your API key (set via agentic_config() or env var)
 api_key: ""
 
 # API endpoint base URL (auto-set by provider)
-api_base: "https://api.deepseek.com/v1"
+api_base: "https://api.deepseek.com"
 
 # Model name (auto-set by provider)
-api_model: "deepseek-chat"
+api_model: "deepseek-v4-pro"
 
 # Generation parameters
 temperature: 0.1

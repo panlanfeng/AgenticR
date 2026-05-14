@@ -300,8 +300,8 @@ test_that("tool_read_file handles missing file", {
 
 test_that("load_config loads defaults", {
   cfg <- load_config()
-  expect_equal(cfg$api_base, "https://api.deepseek.com/v1")
-  expect_equal(cfg$api_model, "deepseek-chat")
+  expect_equal(cfg$api_base, "https://api.deepseek.com")
+  expect_equal(cfg$api_model, "deepseek-v4-pro")
   expect_equal(cfg$temperature, 0.1)
   expect_equal(cfg$max_tokens, 4096)
 })
