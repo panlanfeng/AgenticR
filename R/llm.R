@@ -169,7 +169,7 @@ chat_completion_stream <- function(messages, tools = NULL,
           reasoning_parts <<- c(reasoning_parts, rc)
           if (!has_reasoning) {
             has_reasoning <<- TRUE
-            on_reasoning("\n\033[2mReasoning: ")
+            on_reasoning("\n\033[90mReasoning: ")
           }
           on_reasoning(rc)
         }
@@ -180,9 +180,9 @@ chat_completion_stream <- function(messages, tools = NULL,
           if (!has_content) {
             has_content <<- TRUE
             if (has_reasoning) {
-              on_content("\n\033[2mAgent response: ")
+              on_content("\n\033[90mAgent response: ")
             } else {
-              on_content("\033[2mAgent response: ")
+              on_content("\033[90mAgent response: ")
             }
           }
           on_content(c)

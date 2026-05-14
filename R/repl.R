@@ -453,6 +453,11 @@ write_r_history <- function(code) {
   if (is.null(agenticr_env$r_history_file)) return()
   dir.create(dirname(agenticr_env$r_history_file), showWarnings = FALSE, recursive = TRUE)
   cat(paste0(code, "\n"), file = agenticr_env$r_history_file, append = TRUE)
+  # Reload so up-arrow finds newly written commands immediately
+  tryCatch(
+    suppressWarnings(utils::loadhistory(agenticr_env$r_history_file)),
+    error = function(e) NULL
+  )
 }
 
 write_turn_history <- function(user_input, result) {
