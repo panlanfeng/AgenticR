@@ -40,12 +40,22 @@ is_natural_language <- function(input) {
   }
 
   # Parse check: if R parser succeeds, it's valid R code
+  parse_err <- ""
   parsed <- tryCatch(
     parse(text = input),
-    error = function(e) NULL
+    error = function(e) {
+      parse_err <<- e$message
+      NULL
+    }
   )
   if (!is.null(parsed) && length(parsed) > 0) {
     return(FALSE)
+  }
+
+  # If parse failed with only an apostrophe (INCOMPLETE_STRING) and no
+  # R indicators were found above, it's natural language
+  if (grepl("INCOMPLETE_STRING", parse_err, ignore.case = TRUE)) {
+    return(TRUE)
   }
 
   # Strong NL indicators — only these trigger NL classification
