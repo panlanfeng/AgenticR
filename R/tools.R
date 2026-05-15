@@ -148,7 +148,8 @@ get_tool_definitions <- function() {
         description = paste0(
           "Replace a string in a file. The old_string must be unique -- ",
           "provide enough surrounding text to identify the exact occurrence. ",
-          "If multiple matches exist, add more context lines to make it unique. ",
+          "If multiple matches exist, add more context lines to make it unique, ",
+          "or set replace_all to true to replace all occurrences. ",
           "You must read the file with read_file before editing it."
         ),
         parameters = list(
@@ -165,6 +166,10 @@ get_tool_definitions <- function() {
             new_string = list(
               type = "string",
               description = "The replacement text"
+            ),
+            replace_all = list(
+              type = "boolean",
+              description = "Set to true to replace all occurrences of old_string (default: false)"
             )
           ),
           required = list("file_path", "old_string", "new_string")
@@ -234,7 +239,7 @@ execute_tool <- function(tool_name, arguments) {
     read_file = tool_read_file(arguments$file_path),
     get_function_help = tool_get_function_help(arguments$name),
     grep_search = tool_grep_search(arguments$pattern, arguments$path, arguments$context_lines),
-    file_edit = tool_file_edit(arguments$file_path, arguments$old_string, arguments$new_string),
+    file_edit = tool_file_edit(arguments$file_path, arguments$old_string, arguments$new_string, arguments$replace_all),
     file_write = tool_file_write(arguments$file_path, arguments$content),
     install_package = tool_install_package(arguments$name),
     {
@@ -550,13 +555,14 @@ compute_edit_diff <- function(old_content, new_content, file_path, context = 3) 
 #' Replace a unique string in a file
 #'
 #' @keywords internal
-tool_file_edit <- function(file_path, old_string, new_string) {
+tool_file_edit <- function(file_path, old_string, new_string, replace_all = FALSE) {
   if (is.null(file_path) || nchar(trimws(file_path)) == 0) {
     return("Error: No file path provided")
   }
   if (is.null(old_string) || nchar(old_string) == 0) {
     return("Error: No old_string provided")
   }
+  if (is.null(replace_all)) replace_all <- FALSE
 
   resolved <- path.expand(file_path)
   if (!grepl("^[/~]", resolved)) {
@@ -592,11 +598,15 @@ tool_file_edit <- function(file_path, old_string, new_string) {
   if (count == 0) {
     return(paste0("No match found for the given old_string in ", resolved))
   }
-  if (count > 1) {
-    return(paste0("Found ", count, " matches -- old_string must be unique. Provide more context to make it unique."))
+  if (!replace_all && count > 1) {
+    return(paste0("Found ", count, " matches -- old_string must be unique. Provide more context to make it unique, or set replace_all = true."))
   }
 
-  new_content <- sub(old_string, new_string, content, fixed = TRUE)
+  if (replace_all) {
+    new_content <- gsub(old_string, new_string, content, fixed = TRUE)
+  } else {
+    new_content <- sub(old_string, new_string, content, fixed = TRUE)
+  }
 
   tryCatch(
     writeLines(new_content, resolved),

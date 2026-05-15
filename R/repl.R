@@ -536,6 +536,7 @@ SYSTEM_PROMPT <- paste0(
   "- Avoid unnecessary intermediate outputs.\n",
   "- DO NOT send R code and output in your text response. User sees the ",
   "executed code and results directly in the REPL. Do not repeat them.\n",
+  "- Do not output full file contents in your response -- use read_file and file_edit tools instead.\n",
   "- Do not add comments in the R code.\n",
   "- Only do End-of-turn summary if the user explicitly requests it.\n",
   "- Do not repeat the user request.\n\n",
