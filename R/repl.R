@@ -135,16 +135,17 @@ read_complete_input <- function(first_line) {
   if (!inherits(parsed, "error")) return(first_line)
 
   err_msg <- conditionMessage(parsed)
+
+  # "unexpected end of input" → genuinely incomplete → continue
   is_incomplete <- grepl("unexpected end of input|unexpected end of line",
                          err_msg, ignore.case = TRUE)
 
-  if (!is_incomplete) {
-    if (grepl("INCOMPLETE_STRING", err_msg, ignore.case = TRUE)) {
-      if (!is_natural_language(first_line)) {
-        is_incomplete <- TRUE
-      } else {
-        return(first_line)
-      }
+  # "INCOMPLETE_STRING" → apostrophe (NL) or unclosed R string (code)
+  if (!is_incomplete && grepl("INCOMPLETE_STRING", err_msg, ignore.case = TRUE)) {
+    if (!is_natural_language(first_line)) {
+      is_incomplete <- TRUE
+    } else {
+      return(first_line)
     }
   }
 

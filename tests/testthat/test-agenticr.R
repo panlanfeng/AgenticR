@@ -37,11 +37,11 @@ test_that("is_natural_language handles edge cases", {
 })
 
 test_that("is_natural_language detects long NL text", {
-  # Conservative: these parse as valid R function calls, so treated as R.
-  # The execution layer catches the failure and routes to LLM for repair.
-  expect_false(is_natural_language("calculate the average of all numeric columns grouped by category"))
-  expect_false(is_natural_language("data from the mtcars dataset with filters"))
-  expect_false(is_natural_language("analysis of the variance across groups"))
+  # Long free-form NL — parse fails (unexpected symbol), correctly detected as NL
+  expect_true(is_natural_language("calculate the average of all numeric columns grouped by category"))
+  expect_true(is_natural_language("I want to find the maximum value in column x and compare it with y"))
+  expect_true(is_natural_language("data from the mtcars dataset with filters"))
+  expect_true(is_natural_language("analysis of the variance across groups"))
 })
 
 test_that("is_natural_language NL indicators still trigger correctly", {
