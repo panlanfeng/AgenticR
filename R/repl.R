@@ -209,6 +209,12 @@ process_input <- function(input) {
       sink(con, type = "message")
 
       expr <- parse(text = input)
+      if (length(expr) == 0) {
+        sink(type = "message")
+        sink(type = "output")
+        close(con)
+        return(list(nl = FALSE, output = ""))
+      }
       result <- withVisible(eval(expr, envir = .GlobalEnv))
 
       sink(type = "message")
