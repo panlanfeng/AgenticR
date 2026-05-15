@@ -356,6 +356,12 @@ process_with_agent <- function(user_input) {
 
         tool_result <- execute_tool(tool_name, tool_args)
 
+        if (tool_name == "file_edit" && !is.null(tool_result) && nchar(trimws(tool_result)) > 0) {
+          cat("\n")
+          cat(tool_result, "\n")
+          utils::flush.console()
+        }
+
         messages <- c(messages, list(list(
           role = "tool",
           tool_call_id = tc$id,
