@@ -25,7 +25,7 @@ PROVIDER_PRESETS <- list(
   google = list(
     name = "Google Gemini",
     api_base = "https://generativelanguage.googleapis.com/v1beta/openai",
-    api_model = "gemini-2.5-pro",
+    api_model = "gemini-3.1-pro-preview",
     env_var = "GOOGLE_API_KEY"
   ),
   glm = list(
@@ -37,7 +37,7 @@ PROVIDER_PRESETS <- list(
   kimi = list(
     name = "Moonshot Kimi",
     api_base = "https://api.moonshot.cn/v1",
-    api_model = "kimi-k2.6",
+    api_model = "kimi-k2-thinking",
     env_var = "KIMI_API_KEY"
   ),
   minimax = list(
@@ -49,25 +49,25 @@ PROVIDER_PRESETS <- list(
   qwen = list(
     name = "Alibaba Qwen",
     api_base = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-    api_model = "qwen-max-latest",
+    api_model = "qwen3.6-plus",
     env_var = "QWEN_API_KEY"
   ),
   xai = list(
     name = "xAI",
     api_base = "https://api.x.ai/v1",
-    api_model = "grok-2-1212",
+    api_model = "grok-4.3",
     env_var = "XAI_API_KEY"
   ),
   openrouter = list(
     name = "OpenRouter",
     api_base = "https://openrouter.ai/api/v1",
-    api_model = "openai/gpt-5.5",
+    api_model = "openrouter/auto",
     env_var = "OPENROUTER_API_KEY"
   ),
   siliconflow = list(
     name = "SiliconFlow",
     api_base = "https://api.siliconflow.cn/v1",
-    api_model = "deepseek-ai/DeepSeek-V3-0324",
+    api_model = "deepseek-ai/DeepSeek-V4-Flash",
     env_var = "SILICONFLOW_API_KEY"
   ),
   perplexity = list(
@@ -79,7 +79,7 @@ PROVIDER_PRESETS <- list(
   mistral = list(
     name = "Mistral AI",
     api_base = "https://api.mistral.ai/v1",
-    api_model = "mistral-large-latest",
+    api_model = "mistral-large-2512",
     env_var = "MISTRAL_API_KEY"
   ),
   bedrock = list(
