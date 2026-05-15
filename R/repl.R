@@ -542,7 +542,6 @@ SYSTEM_PROMPT <- paste0(
 
 
   "Ask for user permission before:\n",
-  "- installing packages\n",
   "- deleting files or data\n\n",
 
   "When code fails with \"could not find function\", \"there is no package\", ",
