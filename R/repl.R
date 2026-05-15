@@ -192,7 +192,6 @@ read_complete_input <- function(first_line) {
 #' @keywords internal
 process_input <- function(input) {
   is_nl <- is_natural_language(input)
-  if (agenticr_env$paste_active) is_nl <- FALSE
 
   if (!is_nl) {
     result <- tryCatch({
