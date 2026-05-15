@@ -348,6 +348,11 @@ process_with_agent <- function(user_input) {
     reasoning <- stream_result$reasoning_content
     tool_calls <- stream_result$tool_calls
 
+    if (nchar(content) > 0 || nchar(reasoning) > 0) {
+      cat("\033[0m\n")
+      utils::flush.console()
+    }
+
     if (length(tool_calls) > 0) {
       assistant_msg <- list(
         role = "assistant",
