@@ -353,13 +353,7 @@ process_with_agent <- function(user_input) {
           error = function(e) list()
         )
 
-        cat("\n")
         tool_result <- execute_tool(tool_name, tool_args)
-
-        if (!is.null(tool_result) && nchar(trimws(tool_result)) > 0) {
-          cat(tool_result, "\n")
-          utils::flush.console()
-        }
 
         messages <- c(messages, list(list(
           role = "tool",
@@ -393,12 +387,7 @@ process_with_agent <- function(user_input) {
 
       if (length(code_blocks) > 0) {
         for (code in code_blocks) {
-          cat("\n")
           tool_result <- tool_execute_r_code(code)
-          if (nchar(trimws(tool_result)) > 0) {
-            cat(tool_result, "\n")
-            utils::flush.console()
-          }
 
           messages <- c(messages, list(list(
             role = "user",
