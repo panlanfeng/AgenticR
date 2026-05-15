@@ -30,7 +30,8 @@ is_natural_language <- function(input) {
     "^save\\(",                  # Save data
     "^data\\(",                  # Load built-in data
     "^lm\\(",                    # Linear model
-    "^glm\\("                    # Generalized linear model
+    "^glm\\(",                   # Generalized linear model
+    "^\\s*#"                     # R comment (possibly indented)
   )
 
   for (pattern in r_indicators) {
