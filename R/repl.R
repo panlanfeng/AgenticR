@@ -259,6 +259,10 @@ process_input <- function(input) {
     return(result)
   }
 
+  if (agenticr_env$paste_active) {
+    return(list(nl = TRUE))
+  }
+
   process_with_agent(input)
   list(nl = TRUE, response = tail(agenticr_env$conversation, 1)[[1]]$content %||% "")
 }
