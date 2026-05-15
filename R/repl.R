@@ -101,6 +101,7 @@ agentic <- function(auto = TRUE, ...) {
 
     now <- Sys.time()
     delta <- as.numeric(difftime(now, agenticr_env$last_input_time, units = "secs"))
+    agenticr_env$last_input_time <- now
 
     agenticr_env$paste_active <- (delta < 0.3)
 
@@ -122,7 +123,6 @@ agentic <- function(auto = TRUE, ...) {
     write_turn_history(input, result)
 
     utils::flush.console()
-    agenticr_env$last_input_time <- Sys.time()
   }
 
   cli::cli_text("")
