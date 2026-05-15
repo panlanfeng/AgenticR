@@ -17,11 +17,6 @@ is_natural_language <- function(input) {
 
   input <- trimws(input)
 
-  # Contractions: letter + apostrophe + letter (don't, it's, what's, l'amour)
-  if (grepl("[a-zA-Z]'[a-zA-Z]", input)) {
-    return(TRUE)
-  }
-
   # Parse check: if R parser succeeds, it's R code (includes comments)
   parse_err <- ""
   parsed <- tryCatch(
@@ -45,7 +40,7 @@ is_natural_language <- function(input) {
   # For possessives and other non-contraction apostrophes, treat as NL
   # unless the input has R operators (real R code with unclosed string)
   if (grepl("INCOMPLETE_STRING", parse_err, ignore.case = TRUE)) {
-    for (op in c("<-", "->", "%>%", "|>", "function(", "+")) {
+    for (op in c("<-", "->", "%>%", "|>", "function(", "+", "(", "[")) {
       if (grepl(op, input, fixed = TRUE)) return(FALSE)
     }
     return(TRUE)
