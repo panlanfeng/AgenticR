@@ -158,7 +158,7 @@ test_that("tool_file_edit replaces unique string", {
   tmp <- tempfile()
   writeLines("first\nsecond\nthird", tmp)
   result <- tool_file_edit(tmp, "second", "SECOND")
-  expect_match(result, "Replaced 1 occurrence")
+  expect_match(result, "\\+SECOND")
   content <- paste(readLines(tmp), collapse = "\n")
   expect_match(content, "SECOND")
   unlink(tmp)
@@ -192,8 +192,7 @@ test_that("tool_file_edit handles missing file", {
 test_that("tool_file_write creates a file", {
   tmp <- tempfile()
   result <- tool_file_write(tmp, "hello world")
-  expect_match(result, "Wrote")
-  expect_match(result, "bytes")
+  expect_match(result, "Created")
   expect_true(file.exists(tmp))
   content <- paste(readLines(tmp), collapse = "\n")
   expect_equal(content, "hello world")
@@ -204,7 +203,7 @@ test_that("tool_file_write overwrites existing file", {
   tmp <- tempfile()
   writeLines("old content", tmp)
   result <- tool_file_write(tmp, "new content")
-  expect_match(result, "Wrote")
+  expect_match(result, "\\+new content")
   content <- paste(readLines(tmp), collapse = "\n")
   expect_equal(content, "new content")
   unlink(tmp)
@@ -213,7 +212,7 @@ test_that("tool_file_write overwrites existing file", {
 test_that("tool_file_write creates parent directories", {
   tmp <- file.path(tempdir(), "agenticr_test", "subdir", "test.txt")
   result <- tool_file_write(tmp, "data")
-  expect_match(result, "Wrote")
+  expect_match(result, "Created")
   unlink(dirname(dirname(tmp)), recursive = TRUE)
 })
 

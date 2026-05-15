@@ -479,6 +479,66 @@ tool_grep_search <- function(pattern, path = ".", context_lines = 2) {
   result
 }
 
+#' Compute a compact diff between old and new file content
+#'
+#' @keywords internal
+compute_edit_diff <- function(old_content, new_content, file_path, context = 3) {
+  old_lines <- strsplit(old_content, "\n")[[1]]
+  new_lines <- strsplit(new_content, "\n")[[1]]
+  n_old <- length(old_lines)
+  n_new <- length(new_lines)
+
+  # Find the first and last differing lines
+  first_diff <- 1
+  while (first_diff <= min(n_old, n_new) &&
+         old_lines[first_diff] == new_lines[first_diff]) {
+    first_diff <- first_diff + 1
+  }
+
+  last_old <- n_old
+  last_new <- n_new
+  while (last_old >= first_diff && last_new >= first_diff &&
+         old_lines[last_old] == new_lines[last_new]) {
+    last_old <- last_old - 1
+    last_new <- last_new - 1
+  }
+
+  if (first_diff > last_old && first_diff > last_new) {
+    return(paste0("Edited ", file_path, " (no visible change)"))
+  }
+
+  ctx_start <- max(1, first_diff - context)
+  ctx_end_old <- min(n_old, last_old + context)
+  ctx_end_new <- min(n_new, last_new + context)
+
+  lines <- c(paste0("--- ", file_path), paste0("+++ ", file_path, " (edited)"))
+  lines <- c(lines, paste0("@@ -", ctx_start, ",", ctx_end_old - ctx_start + 1,
+         " +", ctx_start, ",", ctx_end_new - ctx_start + 1, " @@"))
+
+  for (i in ctx_start:max(ctx_end_old, ctx_end_new)) {
+    has_old <- i <= n_old
+    has_new <- i <= n_new
+    if (has_old && has_new) {
+      if (old_lines[i] == new_lines[i]) {
+        lines <- c(lines, paste0(" ", old_lines[i]))
+      } else {
+        if (i <= last_old) lines <- c(lines, paste0("-", old_lines[i]))
+        if (i <= last_new) lines <- c(lines, paste0("+", new_lines[i]))
+      }
+    } else if (has_old && i <= last_old) {
+      lines <- c(lines, paste0("-", old_lines[i]))
+    } else if (has_new && i <= last_new) {
+      lines <- c(lines, paste0("+", new_lines[i]))
+    }
+  }
+
+  if (length(lines) > 40) {
+    lines <- c(lines[1:40], paste0("... (", length(lines) - 40, " more diff lines)"))
+  }
+
+  paste(lines, collapse = "\n")
+}
+
 #' Replace a unique string in a file
 #'
 #' @keywords internal
@@ -530,7 +590,7 @@ tool_file_edit <- function(path, old_string, new_string) {
     error = function(e) return(paste0("Error writing file: ", conditionMessage(e)))
   )
 
-  paste0("Replaced 1 occurrence in ", resolved)
+  compute_edit_diff(content, new_content, resolved)
 }
 
 #' Create or overwrite a file
@@ -554,14 +614,21 @@ tool_file_write <- function(path, content) {
     dir.create(dir_path, recursive = TRUE, showWarnings = FALSE)
   }
 
+  old_content <- if (file.exists(resolved)) {
+    tryCatch(paste(readLines(resolved, warn = FALSE), collapse = "\n"),
+             error = function(e) "")
+  } else ""
+
   tryCatch(
     writeLines(content, resolved),
     error = function(e) return(paste0("Error writing file: ", conditionMessage(e)))
   )
 
-  size <- file.info(resolved)$size
-  if (is.na(size)) size <- 0
-  paste0("Wrote ", size, " bytes to ", resolved)
+  if (nchar(old_content) > 0) {
+    compute_edit_diff(old_content, content, resolved)
+  } else {
+    paste0("Created ", resolved, " (", file.info(resolved)$size, " bytes)")
+  }
 }
 
 #' Request to install a package
