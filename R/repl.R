@@ -135,7 +135,7 @@ read_complete_input <- function(first_line) {
   if (!inherits(parsed, "error")) return(first_line)
 
   err_msg <- conditionMessage(parsed)
-  is_incomplete <- grepl("unexpected end of input|INCOMPLETE_STRING|unexpected end of line",
+  is_incomplete <- grepl("unexpected end of input|unexpected end of line",
                          err_msg, ignore.case = TRUE)
 
   if (!is_incomplete) return(first_line)
@@ -160,7 +160,7 @@ read_complete_input <- function(first_line) {
     if (!inherits(parsed, "error")) break
 
     err_msg <- conditionMessage(parsed)
-    is_incomplete <- grepl("unexpected end of input|INCOMPLETE_STRING|unexpected end of line",
+    is_incomplete <- grepl("unexpected end of input|unexpected end of line",
                            err_msg, ignore.case = TRUE)
     if (!is_incomplete) break
   }
