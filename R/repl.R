@@ -208,9 +208,6 @@ process_input <- function(input) {
         list(list(role = "user", content = conv_msg))
       )
       write_r_history(input)
-      if (length(agenticr_env$conversation) > 20) {
-        agenticr_env$conversation <- tail(agenticr_env$conversation, 20)
-      }
 
       list(nl = FALSE, output = output)
     }, error = function(e) {
@@ -414,11 +411,7 @@ process_with_agent <- function(user_input) {
   }
 
   conv <- messages[sapply(messages, function(m) m$role != "system")]
-  conv <- tail(conv, 20)
-
-  while (length(conv) > 0 && conv[[1]]$role == "tool") {
-    conv <- conv[-1]
-  }
+  conv <- sanitize_messages(conv)
 
   agenticr_env$conversation <- conv
   utils::flush.console()

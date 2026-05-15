@@ -110,6 +110,8 @@ chat_completion_stream <- function(messages, tools = NULL,
                                     on_tool_call = function(name, args) {}) {
   cfg <- get_api_config()
 
+  messages <- sanitize_messages(messages)
+
   body <- list(
     model = cfg$api_model,
     messages = messages,
@@ -320,7 +322,9 @@ run_compaction <- function(messages) {
   while (length(conv) > 0 && conv[[1]]$role == "tool") {
     conv <- conv[-1]
   }
-  conv <- tail(conv, 4)
+  while (estimate_tokens(conv) > 8000 && length(conv) > 4) {
+    conv <- conv[-1]
+  }
   agenticr_env$conversation <- conv
 
   # Rebuild messages with trimmed conversation
