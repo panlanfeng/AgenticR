@@ -81,12 +81,12 @@ get_tool_definitions <- function() {
         parameters = list(
           type = "object",
           properties = list(
-            path = list(
+            file_path = list(
               type = "string",
               description = "Path to the file to read"
             )
           ),
-          required = list("path")
+          required = list("file_path")
         )
       )
     ),
@@ -148,12 +148,13 @@ get_tool_definitions <- function() {
         description = paste0(
           "Replace a string in a file. The old_string must be unique -- ",
           "provide enough surrounding text to identify the exact occurrence. ",
-          "If multiple matches exist, add more context lines to make it unique."
+          "If multiple matches exist, add more context lines to make it unique. ",
+          "You must read the file with read_file before editing it."
         ),
         parameters = list(
           type = "object",
           properties = list(
-            path = list(
+            file_path = list(
               type = "string",
               description = "Path to the file to edit"
             ),
@@ -166,7 +167,7 @@ get_tool_definitions <- function() {
               description = "The replacement text"
             )
           ),
-          required = list("path", "old_string", "new_string")
+          required = list("file_path", "old_string", "new_string")
         )
       )
     ),
@@ -181,7 +182,7 @@ get_tool_definitions <- function() {
         parameters = list(
           type = "object",
           properties = list(
-            path = list(
+            file_path = list(
               type = "string",
               description = "Path to the file to write"
             ),
@@ -190,7 +191,7 @@ get_tool_definitions <- function() {
               description = "The full content to write to the file"
             )
           ),
-          required = list("path", "content")
+          required = list("file_path", "content")
         )
       )
     ),
@@ -230,11 +231,11 @@ execute_tool <- function(tool_name, arguments) {
     execute_r_code = tool_execute_r_code(arguments$code),
     get_dataframe_info = tool_get_dataframe_info(arguments$name),
     search_variables = tool_search_variables(arguments$pattern),
-    read_file = tool_read_file(arguments$path),
+    read_file = tool_read_file(arguments$file_path),
     get_function_help = tool_get_function_help(arguments$name),
     grep_search = tool_grep_search(arguments$pattern, arguments$path, arguments$context_lines),
-    file_edit = tool_file_edit(arguments$path, arguments$old_string, arguments$new_string),
-    file_write = tool_file_write(arguments$path, arguments$content),
+    file_edit = tool_file_edit(arguments$file_path, arguments$old_string, arguments$new_string),
+    file_write = tool_file_write(arguments$file_path, arguments$content),
     install_package = tool_install_package(arguments$name),
     {
       if (startsWith(tool_name, "mcp_")) {
@@ -378,19 +379,26 @@ tool_search_variables <- function(pattern) {
 #' Read a file
 #'
 #' @keywords internal
-tool_read_file <- function(path) {
-  if (is.null(path) || !file.exists(path)) {
-    return(paste0("Error: File '", path, "' not found"))
+tool_read_file <- function(file_path) {
+  if (is.null(file_path) || nchar(trimws(file_path)) == 0) {
+    return("Error: No file path provided")
+  }
+
+  if (!file.exists(file_path)) {
+    return(paste0("Error: File '", file_path, "' not found"))
   }
 
   content <- tryCatch(
-    readLines(path, warn = FALSE),
+    readLines(file_path, warn = FALSE),
     error = function(e) return(paste0("Error reading file: ", conditionMessage(e)))
   )
 
   if (length(content) > 200) {
     content <- c(content[1:200], paste0("... [", length(content) - 200, " more lines]"))
   }
+
+  resolved <- normalizePath(file_path, mustWork = FALSE)
+  agenticr_env$files_read[[resolved]] <- TRUE
 
   paste(content, collapse = "\n")
 }
@@ -542,21 +550,26 @@ compute_edit_diff <- function(old_content, new_content, file_path, context = 3) 
 #' Replace a unique string in a file
 #'
 #' @keywords internal
-tool_file_edit <- function(path, old_string, new_string) {
-  if (is.null(path) || nchar(trimws(path)) == 0) {
+tool_file_edit <- function(file_path, old_string, new_string) {
+  if (is.null(file_path) || nchar(trimws(file_path)) == 0) {
     return("Error: No file path provided")
   }
   if (is.null(old_string) || nchar(old_string) == 0) {
     return("Error: No old_string provided")
   }
 
-  resolved <- path.expand(path)
+  resolved <- path.expand(file_path)
   if (!grepl("^[/~]", resolved)) {
     resolved <- file.path(getwd(), resolved)
   }
 
   if (!file.exists(resolved)) {
     return(paste0("File not found: ", resolved))
+  }
+
+  resolved <- normalizePath(resolved, mustWork = TRUE)
+  if (is.null(agenticr_env$files_read[[resolved]])) {
+    return(paste0("File has not been read yet. Read it first with read_file: ", resolved))
   }
 
   content <- tryCatch(
@@ -596,15 +609,15 @@ tool_file_edit <- function(path, old_string, new_string) {
 #' Create or overwrite a file
 #'
 #' @keywords internal
-tool_file_write <- function(path, content) {
-  if (is.null(path) || nchar(trimws(path)) == 0) {
+tool_file_write <- function(file_path, content) {
+  if (is.null(file_path) || nchar(trimws(file_path)) == 0) {
     return("Error: No file path provided")
   }
   if (is.null(content)) {
     content <- ""
   }
 
-  resolved <- path.expand(path)
+  resolved <- path.expand(file_path)
   if (!grepl("^[/~]", resolved)) {
     resolved <- file.path(getwd(), resolved)
   }

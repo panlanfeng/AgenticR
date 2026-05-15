@@ -4,7 +4,7 @@
 \alias{tool_file_write}
 \title{Create or overwrite a file}
 \usage{
-tool_file_write(path, content)
+tool_file_write(file_path, content)
 }
 \description{
 Create or overwrite a file

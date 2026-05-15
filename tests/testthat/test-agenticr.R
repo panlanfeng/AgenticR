@@ -157,6 +157,7 @@ test_that("tool_get_dataframe_info handles non-dataframe objects", {
 test_that("tool_file_edit replaces unique string", {
   tmp <- tempfile()
   writeLines("first\nsecond\nthird", tmp)
+  tool_read_file(tmp)
   result <- tool_file_edit(tmp, "second", "SECOND")
   expect_match(result, "\\+SECOND")
   content <- paste(readLines(tmp), collapse = "\n")
@@ -167,6 +168,7 @@ test_that("tool_file_edit replaces unique string", {
 test_that("tool_file_edit rejects multiple matches", {
   tmp <- tempfile()
   writeLines("same\nsame\nother", tmp)
+  tool_read_file(tmp)
   result <- tool_file_edit(tmp, "same", "different")
   expect_match(result, "Found 2 matches")
   unlink(tmp)
@@ -175,6 +177,7 @@ test_that("tool_file_edit rejects multiple matches", {
 test_that("tool_file_edit rejects no match", {
   tmp <- tempfile()
   writeLines("hello", tmp)
+  tool_read_file(tmp)
   result <- tool_file_edit(tmp, "not_there", "x")
   expect_match(result, "No match found")
   unlink(tmp)

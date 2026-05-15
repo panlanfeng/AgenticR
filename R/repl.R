@@ -26,6 +26,7 @@ agentic <- function(auto = TRUE, ...) {
   agenticr_env$last_memory_extract_tokens <- 0L
   agenticr_env$total_session_tokens <- 0L
   agenticr_env$active_skills <- list()
+  agenticr_env$files_read <- list()
   agenticr_env$session_id <- paste0(format(Sys.time(), "%Y%m%d_%H%M%S"), "_",
                                      paste(sample(c(0:9, letters[1:6]), 8, replace = TRUE), collapse = ""))
   agenticr_env$session_dir <- file.path(

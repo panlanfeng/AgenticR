@@ -4,7 +4,7 @@
 \alias{tool_file_edit}
 \title{Replace a unique string in a file}
 \usage{
-tool_file_edit(path, old_string, new_string)
+tool_file_edit(file_path, old_string, new_string)
 }
 \description{
 Replace a unique string in a file

@@ -4,7 +4,7 @@
 \alias{tool_read_file}
 \title{Read a file}
 \usage{
-tool_read_file(path)
+tool_read_file(file_path)
 }
 \description{
 Read a file

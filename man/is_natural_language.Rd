@@ -13,9 +13,7 @@ is_natural_language(input)
 TRUE if input looks like natural language
 }
 \description{
-Uses multi-factor heuristic:
-- Word count >= 5 -> likely NL
-- Contains common NL patterns (question words, punctuation)
-- Contains R-specific syntax -> likely R
+Conservative approach: only flag as NL when there are strong NL signals
+or the R parser fails. When in doubt, treat as R code.
 }
 \keyword{internal}
