@@ -27,7 +27,7 @@ agentic <- function(auto = TRUE, ...) {
   agenticr_env$total_session_tokens <- 0L
   agenticr_env$active_skills <- list()
   agenticr_env$files_read <- list()
-  agenticr_env$paste_active <- FALSE
+  agenticr_env$paste_buf <- character(0)
   agenticr_env$last_input_time <- Sys.time()
   agenticr_env$session_id <- paste0(format(Sys.time(), "%Y%m%d_%H%M%S"), "_",
                                      paste(sample(c(0:9, letters[1:6]), 8, replace = TRUE), collapse = ""))
@@ -103,7 +103,16 @@ agentic <- function(auto = TRUE, ...) {
     delta <- as.numeric(difftime(now, agenticr_env$last_input_time, units = "secs"))
     agenticr_env$last_input_time <- now
 
-    agenticr_env$paste_active <- (delta < 0.3)
+    if (delta < 0.3) {
+      agenticr_env$paste_buf <- c(agenticr_env$paste_buf, input)
+      next
+    }
+
+    if (length(agenticr_env$paste_buf) > 0) {
+      agenticr_env$paste_buf <- c(agenticr_env$paste_buf, input)
+      input <- paste(agenticr_env$paste_buf, collapse = "\n")
+      agenticr_env$paste_buf <- character(0)
+    }
 
     input <- read_complete_input(input)
 
@@ -242,10 +251,6 @@ process_input <- function(input) {
         close(con)
       }, error = function(x) NULL)
       error_msg <- conditionMessage(e)
-      if (agenticr_env$paste_active) {
-        cli::cli_alert_danger("{error_msg}")
-        return(list(nl = FALSE, output = "", error = error_msg))
-      }
       if (grepl("could not find function", error_msg) ||
           grepl("unexpected", error_msg) ||
           grepl("object .* not found", error_msg)) {
