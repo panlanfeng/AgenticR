@@ -138,6 +138,16 @@ read_complete_input <- function(first_line) {
   is_incomplete <- grepl("unexpected end of input|unexpected end of line",
                          err_msg, ignore.case = TRUE)
 
+  if (!is_incomplete) {
+    if (grepl("INCOMPLETE_STRING", err_msg, ignore.case = TRUE)) {
+      if (!is_natural_language(first_line)) {
+        is_incomplete <- TRUE
+      } else {
+        return(first_line)
+      }
+    }
+  }
+
   if (!is_incomplete) return(first_line)
 
   lines <- first_line
