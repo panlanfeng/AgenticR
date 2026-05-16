@@ -580,7 +580,14 @@ SYSTEM_PROMPT <- paste0(
   "- First check if it is a typo or genuine missing dependency by reviewing ",
   "conversation history and the environment.\n",
   "- If a package is needed, request installation via tool.\n",
-  "- If user declines, propose a built-in alternative."
+  "- If user declines, propose a built-in alternative.\n\n",
+
+  "R documentation and help:\n",
+  "- Use the get_function_help tool to look up R function documentation. ",
+  "NEVER use help(), ?, or help.search() directly in execute_r_code — ",
+  "they open interactive pagers that block the session.\n",
+  "- When user asks to find functions by topic, use your own knowledge ",
+  "of base R and common packages. Do not use help.search()."
 )
 
 #' Load AGENTS.md from global and project directories
