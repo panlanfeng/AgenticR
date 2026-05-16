@@ -269,7 +269,7 @@ load_config <- function() {
     provider = "deepseek",
     max_tokens = 4096,
     temperature = 0.1,
-    max_rounds = 10
+    max_rounds = 20
   )
 
   # 1. Config file overrides defaults

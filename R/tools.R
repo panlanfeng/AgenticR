@@ -76,7 +76,8 @@ get_tool_definitions <- function() {
         name = "read_file",
         description = paste0(
           "Read the contents of a file from the file system. ",
-          "Use this to examine scripts, data files, or configuration."
+          "Use this to examine scripts, data files, or configuration. ",
+          "For large files, use offset and limit to read specific sections."
         ),
         parameters = list(
           type = "object",
@@ -84,6 +85,14 @@ get_tool_definitions <- function() {
             file_path = list(
               type = "string",
               description = "Path to the file to read"
+            ),
+            offset = list(
+              type = "integer",
+              description = "Line number to start reading from (1-indexed, default: 1)"
+            ),
+            limit = list(
+              type = "integer",
+              description = "Maximum lines to return (default: 800)"
             )
           ),
           required = list("file_path")
@@ -305,7 +314,7 @@ execute_tool <- function(tool_name, arguments) {
     execute_r_code = tool_execute_r_code(arguments$code),
     get_dataframe_info = tool_get_dataframe_info(arguments$name),
     search_variables = tool_search_variables(arguments$pattern),
-    read_file = tool_read_file(arguments$file_path),
+    read_file = tool_read_file(arguments$file_path, arguments$offset, arguments$limit),
     get_function_help = tool_get_function_help(arguments$name, arguments$package),
     get_function_source = tool_get_function_source(arguments$name, arguments$package),
     grep_search = tool_grep_search(arguments$pattern, arguments$path %||% ".", arguments$context_lines %||% 2L),
@@ -520,7 +529,7 @@ tool_search_variables <- function(pattern) {
 #' Read a file
 #'
 #' @keywords internal
-tool_read_file <- function(file_path) {
+tool_read_file <- function(file_path, offset = NULL, limit = NULL) {
   if (is.null(file_path) || nchar(trimws(file_path)) == 0) {
     return("Error: No file path provided")
   }
@@ -533,15 +542,33 @@ tool_read_file <- function(file_path) {
     readLines(file_path, warn = FALSE),
     error = function(e) return(paste0("Error reading file: ", conditionMessage(e)))
   )
+  if (!is.character(content)) return(content)
 
-  if (length(content) > 200) {
-    content <- c(content[1:200], paste0("... [", length(content) - 200, " more lines]"))
+  total_lines <- length(content)
+
+  # Apply offset (1-indexed)
+  start_line <- if (is.null(offset) || is.na(offset)) 1L else max(1L, as.integer(offset))
+  MAX_LINES <- 800L
+  limit_val <- if (!is.null(limit) && !is.na(limit)) min(as.integer(limit), MAX_LINES) else MAX_LINES
+  end_line <- min(start_line + limit_val - 1L, total_lines)
+
+  # Truncation note
+  truncated <- end_line < total_lines
+  content <- content[start_line:end_line]
+
+  lines <- content
+  if (truncated) {
+    lines <- c(lines, sprintf("... [%d more lines after line %d. Use offset=%d to read next section]",
+                              total_lines - end_line, end_line, end_line + 1))
+  }
+  if (start_line > 1) {
+    lines <- c(sprintf("[Starting at line %d of %d total]", start_line, total_lines), lines)
   }
 
   resolved <- normalizePath(file_path, mustWork = FALSE)
   agenticr_env$files_read[[resolved]] <- TRUE
 
-  paste(content, collapse = "\n")
+  paste(lines, collapse = "\n")
 }
 
 #' Get R function source code
