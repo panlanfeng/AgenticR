@@ -97,7 +97,9 @@ get_tool_definitions <- function() {
         description = paste0(
           "Get R documentation for a function. Returns the help page content ",
           "including description, usage, arguments, and examples. ",
-          "Use this when unsure about a function's syntax or parameters."
+          "Specify package when looking up a function from a specific package ",
+          "(e.g. dplyr, ggplot2). Use this when unsure about a function's ",
+          "syntax or parameters."
         ),
         parameters = list(
           type = "object",
@@ -105,6 +107,10 @@ get_tool_definitions <- function() {
             name = list(
               type = "string",
               description = "Name of the R function to look up"
+            ),
+            package = list(
+              type = "string",
+              description = "Package name where the function is defined (optional)"
             )
           ),
           required = list("name")
@@ -237,7 +243,7 @@ execute_tool <- function(tool_name, arguments) {
     get_dataframe_info = tool_get_dataframe_info(arguments$name),
     search_variables = tool_search_variables(arguments$pattern),
     read_file = tool_read_file(arguments$file_path),
-    get_function_help = tool_get_function_help(arguments$name),
+    get_function_help = tool_get_function_help(arguments$name, arguments$package),
     grep_search = tool_grep_search(arguments$pattern, arguments$path, arguments$context_lines),
     file_edit = tool_file_edit(arguments$file_path, arguments$old_string, arguments$new_string, arguments$replace_all),
     file_write = tool_file_write(arguments$file_path, arguments$content),
@@ -411,25 +417,31 @@ tool_read_file <- function(file_path) {
 #' Get R function documentation
 #'
 #' @keywords internal
-tool_get_function_help <- function(name) {
+tool_get_function_help <- function(name, package = NULL) {
   if (is.null(name) || nchar(trimws(name)) == 0) {
     return("Error: No function name provided")
   }
 
-  old_pager <- getOption("pager")
-  on.exit(options(pager = old_pager))
-  options(pager = function(files, header, title, delete.file) {
-    for (f in files) cat(paste(readLines(f), collapse = "\n"))
-  })
+  h <- tryCatch({
+    if (is.null(package) || nchar(trimws(package)) == 0) {
+      suppressWarnings(do.call(help, list(topic = name, help_type = "text")))
+    } else {
+      suppressWarnings(do.call(help, list(topic = name, package = package, help_type = "text")))
+    }
+  }, error = function(e) NULL)
+
+  if (is.null(h) || length(h) == 0) {
+    return(paste0("No documentation found for '", name, "'"))
+  }
 
   help_lines <- character(0)
   con <- textConnection("help_lines", open = "w", local = TRUE)
-  sink(con)
-  tryCatch(
-    help(name, help_type = "text"),
-    error = function(e) cat("Error:", conditionMessage(e))
-  )
-  sink()
+  tryCatch({
+    rd <- utils:::.getHelpFile(h)
+    tools::Rd2txt(rd, out = con)
+  }, error = function(e) {
+    cat("Error:", conditionMessage(e), "\n", file = con)
+  })
   close(con)
 
   help_lines <- help_lines[nchar(trimws(help_lines)) > 0]
