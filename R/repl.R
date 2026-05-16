@@ -296,6 +296,34 @@ save_turns_jsonl <- function(messages, start_idx) {
       file = agenticr_env$turns_file, append = TRUE)
 }
 
+#' Detect repeated identical errors and produce a strategy-change message
+#'
+#' Returns NULL if no loop detected, or a list(role="user", content=...) message.
+#'
+#' @keywords internal
+check_error_loop <- function(recent_errors, tool_result) {
+  if (!grepl("^Error:", tool_result %||% "")) return(list(msg = NULL, errors = list()))
+  err_key <- substr(tool_result, 1, 80)
+  recent_errors <- c(tail(recent_errors, 3), list(err_key))
+  recent_exec_errors <- tail(recent_errors, 3)
+  if (length(recent_exec_errors) >= 3 &&
+      length(unique(recent_exec_errors)) == 1) {
+    msg <- list(
+      role = "user",
+      content = paste0(
+        "You have hit the same R error 3 times: ", err_key, "\n",
+        "Stop retrying. Change your approach:\n",
+        "- Use a different R function or syntax\n",
+        "- Use grep_search tool instead of writing grep/find code\n",
+        "- Ask the user which files or tests to focus on\n",
+        "- If using a custom function that shadows a base R function, rename it"
+      )
+    )
+    return(list(msg = msg, errors = list()))
+  }
+  list(msg = NULL, errors = recent_errors)
+}
+
 #' Process natural language input through the LLM agent
 #'
 #' @keywords internal
@@ -434,7 +462,7 @@ process_with_agent <- function(user_input) {
       utils::flush.console()
     }
 
-    if (length(tool_calls) > 0) {
+      if (length(tool_calls) > 0) {
       tool_names <- sapply(tool_calls, function(tc) tc$`function`$name)
       cat(cli::col_silver(paste0("[", paste(tool_names, collapse = ", "), "]\n")))
       utils::flush.console()
@@ -477,27 +505,16 @@ process_with_agent <- function(user_input) {
         }
 
         # Detect repeated identical errors — break error loops
-        if (tool_name == "execute_r_code" && grepl("^Error:", tool_result %||% "")) {
-          err_key <- substr(tool_result, 1, 80)
-          recent_errors <- c(tail(recent_errors, 3), list(err_key))
-          recent_exec_errors <- tail(recent_errors, 3)
-          if (length(recent_exec_errors) >= 3 &&
-              length(unique(recent_exec_errors)) == 1) {
-            messages <- c(messages, list(list(
-              role = "user",
-              content = paste0(
-                "You have hit the same R error 3 times: ", err_key, "\n",
-                "Stop retrying. Change your approach:\n",
-                "- Use a different R function or syntax\n",
-                "- Use grep_search tool instead of writing grep/find code\n",
-                "- Ask the user which files or tests to focus on\n",
-                "- If using a custom function that shadows a base R function, rename it"
-              )
-            )))
+        if (tool_name == "execute_r_code") {
+          if (grepl("^Error:", tool_result %||% "")) {
+            loop <- check_error_loop(recent_errors, tool_result)
+            recent_errors <- loop$errors
+            if (!is.null(loop$msg)) {
+              messages <- c(messages, list(loop$msg))
+            }
+          } else {
             recent_errors <- list()
           }
-        } else if (tool_name == "execute_r_code") {
-          recent_errors <- list()
         }
 
         messages <- c(messages, list(list(

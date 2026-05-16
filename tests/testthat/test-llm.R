@@ -289,3 +289,27 @@ test_that("LLM: tool_calls/tool pairing stays valid across turns", {
     NA
   )
 })
+
+# ============================================================================
+# Error-loop detection — integration test
+# ============================================================================
+
+test_that("LLM: agent completes repo-analysis task without silent hang", {
+  skip_if_no_api()
+  agenticr_env$context_injected <- FALSE
+  agenticr_env$stable_summary <- NULL
+  agenticr_env$conversation <- list()
+  agenticr_env$ask_permission <- function(prompt) FALSE
+
+  expect_error(
+    agenticr:::process_with_agent(
+      "read the tests/testthat/test-llm.R file, summarize what it tests, and list 3 area of improvements. do not edit code."
+    ),
+    NA
+  )
+  conv <- agenticr_env$conversation
+  expect_true(length(conv) > 0)
+  # Verify the conversation has assistant content (not just errors)
+  msgs <- Filter(function(m) m$role == "assistant" && nchar(m$content %||% "") > 20, conv)
+  expect_true(length(msgs) > 0)
+})

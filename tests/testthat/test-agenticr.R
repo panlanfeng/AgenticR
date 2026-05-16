@@ -462,3 +462,52 @@ test_that("agenticr_env has required fields", {
   expect_true(is.numeric(env$max_context_tokens))
   expect_true(is.character(env$memory_file))
 })
+
+# ============================================================================
+# Error-loop detection tests
+# ============================================================================
+
+test_that("check_error_loop returns NULL for non-error results", {
+  res <- agenticr:::check_error_loop(list(), "[1] 5.5")
+  expect_null(res$msg)
+  expect_equal(length(res$errors), 0)
+})
+
+test_that("check_error_loop accumulates errors silently under 3", {
+  res <- agenticr:::check_error_loop(list(), "Error: unused argument (ignore.case = TRUE)")
+  expect_null(res$msg)
+  expect_equal(length(res$errors), 1)
+
+  res <- agenticr:::check_error_loop(res$errors, "Error: unused argument (ignore.case = TRUE)")
+  expect_null(res$msg)
+  expect_equal(length(res$errors), 2)
+})
+
+test_that("check_error_loop triggers message on 3rd identical error", {
+  err <- "Error: unused argument (ignore.case = TRUE)"
+  r1 <- agenticr:::check_error_loop(list(), err)
+  r2 <- agenticr:::check_error_loop(r1$errors, err)
+  r3 <- agenticr:::check_error_loop(r2$errors, err)
+  expect_true(!is.null(r3$msg))
+  expect_match(r3$msg$content, "same R error 3 times")
+  expect_match(r3$msg$content, "Change your approach")
+  expect_equal(length(r3$errors), 0)
+})
+
+test_that("check_error_loop accumulates different errors in sliding window", {
+  err1 <- "Error: unused argument (ignore.case = TRUE)"
+  err2 <- "Error: could not find function"
+  r1 <- agenticr:::check_error_loop(list(), err1)
+  r2 <- agenticr:::check_error_loop(r1$errors, err1)
+  # Different error: sliding window keeps all, no trigger
+  r3 <- agenticr:::check_error_loop(r2$errors, err2)
+  expect_null(r3$msg)
+  # Sliding window holds last 3 errors: [err1, err1, err2]
+  expect_equal(length(r3$errors), 3)
+})
+
+test_that("check_error_loop handles NULL tool_result", {
+  res <- agenticr:::check_error_loop(list(), NULL)
+  expect_null(res$msg)
+  expect_equal(length(res$errors), 0)
+})
