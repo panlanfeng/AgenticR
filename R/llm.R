@@ -311,13 +311,37 @@ run_compaction <- function(messages) {
     chat_completion(summary_msgs, tools = NULL),
     error = function(e) NULL
   )
-  if (is.null(resp) || length(resp$choices) == 0) return(messages)
+  if (is.null(resp) || length(resp$choices) == 0) {
+    # Fallback: hard truncation when sub-agent LLM call fails
+    conv <- messages[conv_start:length(messages)]
+    while (length(conv) > 0 && conv[[1]]$role == "tool") conv <- conv[-1]
+    keep <- min(16, length(conv))
+    conv <- tail(conv, keep)
+    last_slot <- messages[[length(messages)]]
+    new_msgs <- c(messages[1:min(conv_start - 1, 3)], conv)
+    if (last_slot$role == "user" && !identical(conv[[length(conv)]], last_slot)) {
+      new_msgs <- c(new_msgs, list(last_slot))
+    }
+    return(new_msgs)
+  }
 
   summary_text <- tryCatch(
     resp$choices[[1]]$message$content,
     error = function(e) ""
   )
-  if (nchar(trimws(summary_text)) == 0) return(messages)
+  if (nchar(trimws(summary_text)) == 0) {
+    # Fallback: hard truncation when summary is empty
+    conv <- messages[conv_start:length(messages)]
+    while (length(conv) > 0 && conv[[1]]$role == "tool") conv <- conv[-1]
+    keep <- min(16, length(conv))
+    conv <- tail(conv, keep)
+    last_slot <- messages[[length(messages)]]
+    new_msgs <- c(messages[1:min(conv_start - 1, 3)], conv)
+    if (last_slot$role == "user" && !identical(conv[[length(conv)]], last_slot)) {
+      new_msgs <- c(new_msgs, list(last_slot))
+    }
+    return(new_msgs)
+  }
 
   agenticr_env$stable_summary <- paste0(
     "[Compaction summary]\n", trimws(summary_text)

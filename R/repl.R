@@ -178,7 +178,12 @@ read_complete_input <- function(first_line) {
 
     if (is.null(next_line)) break
     next_line <- trimws(next_line)
-    if (next_line == "") break
+    if (next_line == "") {
+      # Blank line: only break if accumulated code already parses
+      parsed <- tryCatch(parse(text = lines), error = function(e) e)
+      if (!inherits(parsed, "error")) break
+      next
+    }
 
     lines <- paste(lines, next_line, sep = "\n")
 
@@ -250,7 +255,8 @@ process_input <- function(input) {
       }, error = function(x) NULL)
       error_msg <- conditionMessage(e)
       if (grepl("could not find function", error_msg) ||
-          grepl("unexpected", error_msg) ||
+          grepl("there is no package called", error_msg) ||
+          grepl("^unexpected (symbol|end of input|')'|','|'}'|string)", error_msg) ||
           grepl("object .* not found", error_msg)) {
         process_with_agent(input)
         return(list(nl = TRUE, response = tail(agenticr_env$conversation, 1)[[1]]$content %||% ""))
@@ -410,12 +416,22 @@ process_with_agent <- function(user_input) {
 
       for (tc in tool_calls) {
         tool_name <- tc$`function`$name
+        tool_args <- list()
+        json_err <- NULL
         tool_args <- tryCatch(
           jsonlite::fromJSON(tc$`function`$arguments, simplifyVector = FALSE),
-          error = function(e) list()
+          error = function(e) { json_err <<- conditionMessage(e); list() }
         )
 
-        tool_result <- execute_tool(tool_name, tool_args)
+        if (!is.null(json_err)) {
+          tool_result <- paste0(
+            "TOOL ARGUMENT JSON PARSE ERROR. Fix the JSON syntax and retry.\n",
+            "Parse error: ", json_err, "\n",
+            "Raw arguments received: ", tc$`function`$arguments
+          )
+        } else {
+          tool_result <- execute_tool(tool_name, tool_args)
+        }
 
         if (tool_name %in% c("execute_r_code", "file_edit") &&
             !is.null(tool_result) && nchar(trimws(tool_result)) > 0) {
@@ -456,6 +472,11 @@ process_with_agent <- function(user_input) {
       if (length(code_blocks) > 0) {
         for (code in code_blocks) {
           tool_result <- tool_execute_r_code(code)
+          messages <- c(messages, list(list(
+            role = "tool",
+            tool_call_id = paste0("code_block_", round, "_", which(code_blocks == code)),
+            content = if (is.null(tool_result)) "" else tool_result
+          )))
         }
         next
       }
@@ -468,7 +489,10 @@ process_with_agent <- function(user_input) {
     break
   }
 
-  conv <- messages[sapply(messages, function(m) m$role != "system")]
+  conv <- messages[sapply(messages, function(m) {
+    m$role != "system" &&
+    !grepl("^\\[Compaction summary\\]", m$content %||% "")
+  })]
   conv <- sanitize_messages(conv)
 
   agenticr_env$conversation <- conv
@@ -684,7 +708,7 @@ build_stable_context <- function() {
 #'
 #' @keywords internal
 extract_r_code_blocks <- function(text) {
-  pattern <- "(?s)```\\s*(?:r|\\{r\\}|\\{R\\})?\\s*\\n?(.*?)```"
+  pattern <- "(?s)```\\s*(?:r|\\{[rR][^}]*\\})\\s*\\n?(.*?)```"
   matches <- gregexpr(pattern, text, perl = TRUE)[[1]]
   if (length(matches) == 0 || matches[1] == -1) return(character(0))
 

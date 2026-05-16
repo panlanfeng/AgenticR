@@ -1,7 +1,7 @@
 #' Detect if input is natural language or R code
 #'
-#' Parse-first approach. Only three rules:
-#' 1. Contraction pattern (letter + apostrophe + letter) → NL
+#' Parse-first approach with fast-path heuristics:
+#' 1. Common NL starters (what, how, can, please, show, make, etc.) → NL
 #' 2. parse() succeeds → R code (includes empty expressions = comments)
 #' 3. "unexpected end of input" or "INCOMPLETE_STRING" → incomplete R
 #' 4. Everything else → NL
@@ -16,6 +16,17 @@ is_natural_language <- function(input) {
   }
 
   input <- trimws(input)
+
+  # Fast path: common NL starters skip parse() entirely
+  nl_starters <- c("what", "how", "can", "please", "show", "make", "create",
+                   "find", "get", "list", "calculate", "plot", "analyze",
+                   "i ", "we ", "could", "would", "help", "explain", "run",
+                   "load", "compare", "summarize", "summarise", "describe",
+                   "check", "tell")
+  input_lower <- tolower(input)
+  first_word <- sub("^(\\S+).*", "\\1", input_lower)
+  if (nchar(first_word) > 0 && first_word %in% nl_starters) return(TRUE)
+  if (grepl("^(i |we |could |would |can |please )", input_lower)) return(TRUE)
 
   # Parse check: if R parser succeeds, it's R code (includes comments)
   parse_err <- ""
@@ -36,11 +47,9 @@ is_natural_language <- function(input) {
     return(FALSE)
   }
 
-  # "INCOMPLETE_STRING" → contractions already caught above
-  # For possessives and other non-contraction apostrophes, treat as NL
-  # unless the input has R operators (real R code with unclosed string)
+  # "INCOMPLETE_STRING" → detect if it's an R string or NL with apostrophe
   if (grepl("INCOMPLETE_STRING", parse_err, ignore.case = TRUE)) {
-    for (op in c("<-", "->", "%>%", "|>", "function(", "+", "(", "[")) {
+    for (op in c("<-", "->", "%>%", "|>", "function(")) {
       if (grepl(op, input, fixed = TRUE)) return(FALSE)
     }
     return(TRUE)

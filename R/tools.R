@@ -193,7 +193,7 @@ get_tool_definitions <- function() {
             ),
             old_string = list(
               type = "string",
-              description = "The exact text to replace (must match exactly, including whitespace)"
+              description = "The exact text to replace. This is a literal string match, NOT a regex pattern. Must match exactly including whitespace and line breaks."
             ),
             new_string = list(
               type = "string",
