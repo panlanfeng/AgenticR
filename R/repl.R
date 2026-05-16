@@ -34,7 +34,9 @@ agentic <- function(auto = TRUE, ...) {
   agenticr_env$outputs_dir <- file.path(agenticr_env$session_dir, "outputs")
   dir.create(agenticr_env$outputs_dir, showWarnings = FALSE, recursive = TRUE)
   agenticr_env$history_file <- file.path(agenticr_env$session_dir, "history.jsonl")
+  agenticr_env$turns_file <- file.path(agenticr_env$session_dir, "turns.jsonl")
   agenticr_env$turn_counter <- 0L
+  agenticr_env$saved_msg_count <- 0L
   agenticr_env$ask_permission <- function(prompt) {
     cli::cli_alert_warning(paste0("Permission required: ", prompt))
     ans <- readline("Proceed? [y/N] ")
@@ -125,6 +127,8 @@ agentic <- function(auto = TRUE, ...) {
 
   cli::cli_text("")
   cli::cli_alert_info("Exiting. Session saved to {.file {agenticr_env$session_dir}}")
+  cli::cli_text("Conversation: {.file {agenticr_env$turns_file}}")
+  cli::cli_text("Resume with: {.code agentic_resume(\"{agenticr_env$session_id}\")}")
   invisible()
 }
 
@@ -260,6 +264,30 @@ process_input <- function(input) {
 
   process_with_agent(input)
   list(nl = TRUE, response = tail(agenticr_env$conversation, 1)[[1]]$content %||% "")
+}
+
+#' Save conversation messages to turns JSONL file (append-only)
+#'
+#' Appends each message as a JSON line. Tool results that were saved to
+#' external files by truncate_tool_result already contain the file reference
+#' in their content field.
+#'
+#' @keywords internal
+save_turns_jsonl <- function(messages, start_idx) {
+  if (is.null(agenticr_env$turns_file)) return()
+  n <- length(messages)
+  if (start_idx > n) return()
+
+  lines <- character(n - start_idx + 1)
+  for (i in start_idx:n) {
+    msg <- messages[[i]]
+    lines[i - start_idx + 1] <- tryCatch(
+      jsonlite::toJSON(msg, auto_unbox = TRUE, force = TRUE, null = "null"),
+      error = function(e) "{}"
+    )
+  }
+  cat(paste(lines, collapse = "\n"), "\n", sep = "",
+      file = agenticr_env$turns_file, append = TRUE)
 }
 
 #' Process natural language input through the LLM agent
@@ -444,6 +472,13 @@ process_with_agent <- function(user_input) {
   conv <- sanitize_messages(conv)
 
   agenticr_env$conversation <- conv
+
+  new_start <- agenticr_env$saved_msg_count + 1L
+  if (new_start <= length(conv)) {
+    save_turns_jsonl(conv, new_start)
+    agenticr_env$saved_msg_count <- length(conv)
+  }
+
   utils::flush.console()
 }
 
