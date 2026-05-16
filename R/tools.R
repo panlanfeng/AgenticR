@@ -447,12 +447,6 @@ tool_execute_r_code <- function(code) {
   }
 
   output <- trimws(output)
-  MAX_CHARS <- 4000L
-  if (nchar(output) > MAX_CHARS) {
-    msg <- "\n... [output truncated]"
-    output <- paste0(substr(output, 1, MAX_CHARS - nchar(msg)), msg)
-  }
-
   output
 }
 

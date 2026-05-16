@@ -300,6 +300,13 @@ save_turns_jsonl <- function(messages, start_idx) {
 #'
 #' @keywords internal
 process_with_agent <- function(user_input) {
+  if (is.null(agenticr_env$session_dir)) {
+    agenticr_env$session_dir <- file.path(tempdir(), "agenticr_session")
+    agenticr_env$outputs_dir <- file.path(agenticr_env$session_dir, "outputs")
+    dir.create(agenticr_env$outputs_dir, showWarnings = FALSE, recursive = TRUE)
+    agenticr_env$session_id <- paste0(format(Sys.time(), "%Y%m%d_%H%M%S"), "_",
+                                       paste(sample(c(0:9, letters[1:6]), 8, replace = TRUE), collapse = ""))
+  }
   cfg <- get_api_config()
   tools <- get_tool_definitions()
   mcp_tools <- mcp_all_tools()
@@ -354,39 +361,47 @@ process_with_agent <- function(user_input) {
   messages <- c(messages, list(list(role = "user", content = user_content)))
 
   for (round in 1:cfg$max_rounds) {
-    token_count <- estimate_tokens(messages)
+    token_count <- estimate_tokens(messages, tools)
     if (token_count > agenticr_env$max_context_tokens * 0.8) {
       messages <- run_compaction(messages)
     }
 
-    agenticr_env$total_session_tokens <- token_count
+    agenticr_env$total_session_tokens <- estimate_tokens(messages, tools)
     since_last <- token_count - agenticr_env$last_memory_extract_tokens
     if (since_last > 50000) {
       extract_memory(messages)
     }
 
-    stream_result <- tryCatch(
-      chat_completion_stream(
-        messages, tools,
-        on_reasoning = function(txt) {
-          cat(txt, sep = "")
-          utils::flush.console()
-        },
-        on_content = function(txt) {
-          cat(txt, sep = "")
-          utils::flush.console()
-        },
-        on_tool_call = function(name, args) {}
-      ),
-      error = function(e) {
-        cat("\033[0m")
-        cli::cli_alert_danger("LLM API call failed: {.val {conditionMessage(e)}}")
-        cli::cli_alert_info("Conversation state preserved. You can continue or retry.")
-        return(NULL)
-      }
-    )
+    stream_result <- NULL
+    for (retry in 1:3) {
+      stream_result <- tryCatch(
+        chat_completion_stream(
+          messages, tools,
+          on_reasoning = function(txt) {
+            cat(txt, sep = "")
+            utils::flush.console()
+          },
+          on_content = function(txt) {
+            cat(txt, sep = "")
+            utils::flush.console()
+          },
+          on_tool_call = function(name, args) {}
+        ),
+        error = function(e) {
+          cli::cli_alert_warning("API error (attempt {retry}/3): {.val {conditionMessage(e)}}")
+          NULL
+        }
+      )
+      if (!is.null(stream_result)) break
+      if (retry < 3) Sys.sleep(min(2^retry, 10))
+    }
 
-    if (is.null(stream_result)) break
+    if (is.null(stream_result)) {
+      cat("\033[0m")
+      cli::cli_alert_danger("LLM API call failed after 3 attempts.")
+      cli::cli_alert_info("Conversation state preserved. You can continue or retry.")
+      break
+    }
 
     content <- stream_result$content
     reasoning <- stream_result$reasoning_content
@@ -473,9 +488,13 @@ process_with_agent <- function(user_input) {
         for (code in code_blocks) {
           tool_result <- tool_execute_r_code(code)
           messages <- c(messages, list(list(
-            role = "tool",
-            tool_call_id = paste0("code_block_", round, "_", which(code_blocks == code)),
-            content = if (is.null(tool_result)) "" else tool_result
+            role = "user",
+            content = paste0(
+              "[R code executed]\n", code,
+              if (nchar(trimws(tool_result)) > 0)
+                paste0("\n\nOutput:\n", tool_result)
+              else ""
+            )
           )))
         }
         next

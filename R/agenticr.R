@@ -30,7 +30,6 @@ utils::globalVariables("output_lines")
 agenticr_env <- new.env(parent = emptyenv())
 
 agenticr_env$config <- NULL
-agenticr_env$session_history <- list()
 agenticr_env$is_active <- FALSE
 agenticr_env$stable_summary <- NULL
 agenticr_env$context_injected <- FALSE

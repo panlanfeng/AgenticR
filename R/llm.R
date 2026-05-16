@@ -260,17 +260,41 @@ chat_completion_stream <- function(messages, tools = NULL,
 #' Estimate token count (rough heuristic: 1 token ~ 3.5 chars)
 #'
 #' @keywords internal
-estimate_tokens <- function(messages) {
+estimate_tokens <- function(messages, tools = NULL) {
   total <- 0
   for (msg in messages) {
+    total <- total + 4
     if (!is.null(msg$content)) {
       total <- total + nchar(msg$content) / 3.5
     }
     if (!is.null(msg$tool_calls)) {
       total <- total + nchar(jsonlite::toJSON(msg$tool_calls)) / 3.5
     }
+    if (!is.null(msg$reasoning_content)) {
+      total <- total + nchar(msg$reasoning_content) / 3.5
+    }
+    if (!is.null(msg$name)) {
+      total <- total + nchar(msg$name) / 3.5
+    }
+  }
+  if (!is.null(tools) && length(tools) > 0) {
+    tools_json <- jsonlite::toJSON(tools, auto_unbox = TRUE)
+    total <- total + nchar(tools_json) / 3.5
   }
   ceiling(total)
+}
+
+hard_truncate_messages <- function(messages, conv_start) {
+  conv <- messages[conv_start:length(messages)]
+  while (length(conv) > 0 && conv[[1]]$role == "tool") conv <- conv[-1]
+  keep <- min(16, length(conv))
+  conv <- tail(conv, keep)
+  last_slot <- messages[[length(messages)]]
+  new_msgs <- c(messages[1:min(conv_start - 1, 3)], conv)
+  if (last_slot$role == "user" && !identical(conv[[length(conv)]], last_slot)) {
+    new_msgs <- c(new_msgs, list(last_slot))
+  }
+  new_msgs
 }
 
 #' Compact conversation context using a sub-agent LLM call.
@@ -281,7 +305,7 @@ estimate_tokens <- function(messages) {
 #'
 #' @keywords internal
 run_compaction <- function(messages) {
-  if (length(messages) <= 4) return(messages)
+  if (estimate_tokens(messages) < agenticr_env$max_context_tokens * 0.6) return(messages)
 
   # Find the start of the conversation tail within messages
   # Skip system, AGENTS.md, skills, stable_context, compaction_summary
@@ -312,17 +336,7 @@ run_compaction <- function(messages) {
     error = function(e) NULL
   )
   if (is.null(resp) || length(resp$choices) == 0) {
-    # Fallback: hard truncation when sub-agent LLM call fails
-    conv <- messages[conv_start:length(messages)]
-    while (length(conv) > 0 && conv[[1]]$role == "tool") conv <- conv[-1]
-    keep <- min(16, length(conv))
-    conv <- tail(conv, keep)
-    last_slot <- messages[[length(messages)]]
-    new_msgs <- c(messages[1:min(conv_start - 1, 3)], conv)
-    if (last_slot$role == "user" && !identical(conv[[length(conv)]], last_slot)) {
-      new_msgs <- c(new_msgs, list(last_slot))
-    }
-    return(new_msgs)
+    return(hard_truncate_messages(messages, conv_start))
   }
 
   summary_text <- tryCatch(
@@ -330,17 +344,7 @@ run_compaction <- function(messages) {
     error = function(e) ""
   )
   if (nchar(trimws(summary_text)) == 0) {
-    # Fallback: hard truncation when summary is empty
-    conv <- messages[conv_start:length(messages)]
-    while (length(conv) > 0 && conv[[1]]$role == "tool") conv <- conv[-1]
-    keep <- min(16, length(conv))
-    conv <- tail(conv, keep)
-    last_slot <- messages[[length(messages)]]
-    new_msgs <- c(messages[1:min(conv_start - 1, 3)], conv)
-    if (last_slot$role == "user" && !identical(conv[[length(conv)]], last_slot)) {
-      new_msgs <- c(new_msgs, list(last_slot))
-    }
-    return(new_msgs)
+    return(hard_truncate_messages(messages, conv_start))
   }
 
   agenticr_env$stable_summary <- paste0(
