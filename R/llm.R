@@ -48,6 +48,7 @@ chat_completion <- function(messages, tools = NULL, stream = FALSE) {
       httr::content(response, "text", encoding = "UTF-8"),
       error = function(e) "Unknown error"
     )
+    if (nchar(error_body) > 300) error_body <- paste0(substr(error_body, 1, 300), "...")
     stop("LLM API error (", httr::status_code(response), "): ", error_body)
   }
 
@@ -130,8 +131,8 @@ chat_completion_stream <- function(messages, tools = NULL,
   reasoning_parts <- character(0)
   tool_call_accum <- list()
   usage <- NULL
-  has_reasoning <- FALSE
-  has_content <- FALSE
+  has_printed_reasoning <- FALSE
+  has_printed_content <- FALSE
   first_chunk <- NULL
   line_buf <- ""
 
@@ -177,9 +178,9 @@ chat_completion_stream <- function(messages, tools = NULL,
         if (!is.null(delta$reasoning_content) && nchar(delta$reasoning_content) > 0) {
           rc <- delta$reasoning_content
           reasoning_parts <<- c(reasoning_parts, rc)
-          if (!has_reasoning) {
-            has_reasoning <<- TRUE
-            on_reasoning("\n\033[90mReasoning: ")
+          if (!has_printed_reasoning) {
+            has_printed_reasoning <<- TRUE
+            on_reasoning("\n\033[2m")
           }
           on_reasoning(rc)
         }
@@ -187,23 +188,16 @@ chat_completion_stream <- function(messages, tools = NULL,
         if (!is.null(delta$content) && nchar(delta$content) > 0) {
           c <- delta$content
           content_parts <<- c(content_parts, c)
-          if (!has_content) {
-            has_content <<- TRUE
-            if (has_reasoning) {
-              on_content("\n\033[90mAgent response: ")
-            } else {
-              on_content("\033[90mAgent response: ")
+          if (!has_printed_content) {
+            has_printed_content <<- TRUE
+            if (has_printed_reasoning) {
+              on_content("\033[0m\n")
             }
           }
           on_content(c)
         }
 
         if (!is.null(delta$tool_calls)) {
-          if (has_reasoning || has_content) {
-            on_reasoning("\033[0m")
-            has_reasoning <<- FALSE
-            has_content <<- FALSE
-          }
           for (tc in delta$tool_calls) {
             idx <- tc$index
             if (!is.null(idx)) {
@@ -237,7 +231,7 @@ chat_completion_stream <- function(messages, tools = NULL,
     stop("LLM API error (", httr::status_code(response), "): ", err_text)
   }
 
-  if (has_reasoning || has_content) {
+  if (has_printed_reasoning || has_printed_content) {
     on_reasoning("\033[0m")
   }
 

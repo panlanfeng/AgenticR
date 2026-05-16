@@ -331,7 +331,7 @@ tool_execute_r_code <- function(code) {
     return("Error: No code provided")
   }
 
-  cat(cli::col_green(paste0("> ", trimws(code), "\n")))
+  cat(cli::col_green(paste0("\u2192 ", trimws(code), "\n")))
   utils::flush.console()
   write_r_history(trimws(code))
 

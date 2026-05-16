@@ -13,7 +13,6 @@
 #' @export
 agentic <- function(auto = TRUE, ...) {
   if (agenticr_env$is_active) {
-    cli::cli_alert_warning("Previous AgenticR session may not have exited cleanly. Resetting...")
     agenticr_env$is_active <- FALSE
   }
 
@@ -52,13 +51,11 @@ agentic <- function(auto = TRUE, ...) {
   cli::cli_text("Type natural language or R code.")
   cli::cli_text("Type {.code exit()} or press {.kbd Ctrl+C} to quit.")
   cli::cli_text("Type {.code /help} for assistance.")
-  cli::cli_text("Session: {.file {agenticr_env$session_dir}}")
   load_r_history()
   enable_tab_completion()
-  cat("\n")
 
   cfg <- tryCatch(get_api_config(), error = function(e) {
-    cli::cli_alert_danger("{e$message}")
+    cli::cli_alert_danger("{.val {e$message}}")
     cli::cli_text("")
     cli::cli_text("Set up your API key now:")
     cli::cli_text("  {.code agentic_config(api_key = \"sk-...\", save = TRUE)}")
@@ -76,15 +73,16 @@ agentic <- function(auto = TRUE, ...) {
   })
   if (is.null(cfg)) return(invisible())
 
-  cli::cli_alert_info("Using model: {cfg$api_model} at {cfg$api_base}")
+  cli::cli_text("{.emph {cfg$api_model}} @ {.url {cfg$api_base}}")
+  cli::cli_text("Session: {.file {agenticr_env$session_dir}}")
 
   mcp_connect_all()
 
   while (TRUE) {
     input <- tryCatch(
-      readline(prompt = "> "),
+      readline(prompt = cli::col_blue("agent> ")),
       interrupt = function(e) {
-        cat("\n")
+        cat("\033[0m\n")
         return(NULL)
       }
     )
@@ -92,26 +90,29 @@ agentic <- function(auto = TRUE, ...) {
     if (is.null(input)) break
 
     input <- trimws(input)
-    if (input == "exit()" || input == "quit()") break
+    if (input %in% c("exit()", "quit()", "exit", "quit", "q")) break
     if (input == "") next
 
     if (grepl("^/", input)) {
       handle_slash_command(input)
-      cat("\n")
-      utils::flush.console()
       next
     }
 
     input <- read_complete_input(input)
 
+    cat("\033[90m", "Thinking...", "\033[0m\r", sep = "")
+    utils::flush.console()
+
     result <- tryCatch(
       process_input(input),
       interrupt = function(e) {
+        cat("\033[0m")
         cli::cli_alert_warning("Interrupted.")
         NULL
       },
       error = function(e) {
-        cli::cli_alert_danger("Error: {conditionMessage(e)}")
+        cat("\033[0m")
+        cli::cli_alert_danger("Error: {.val {conditionMessage(e)}}")
         utils::flush.console()
         NULL
       }
@@ -123,7 +124,7 @@ agentic <- function(auto = TRUE, ...) {
   }
 
   cli::cli_text("")
-  cli::cli_alert_info("Exiting AgenticR session.")
+  cli::cli_alert_info("Exiting. Session saved to {.file {agenticr_env$session_dir}}")
   invisible()
 }
 
@@ -144,6 +145,11 @@ read_complete_input <- function(first_line) {
   # "unexpected end of input" → genuinely incomplete → continue
   is_incomplete <- grepl("unexpected end of input|unexpected end of line",
                          err_msg, ignore.case = TRUE)
+
+  # If input is natural language, return immediately — don't enter multiline
+  if (is_incomplete && is_natural_language(first_line)) {
+    return(first_line)
+  }
 
   # "INCOMPLETE_STRING" → apostrophe (NL) or unclosed R string (code)
   if (!is_incomplete && grepl("INCOMPLETE_STRING", err_msg, ignore.case = TRUE)) {
@@ -245,7 +251,7 @@ process_input <- function(input) {
         process_with_agent(input)
         return(list(nl = TRUE, response = tail(agenticr_env$conversation, 1)[[1]]$content %||% ""))
       }
-      cli::cli_alert_danger("{error_msg}")
+      cli::cli_alert_danger("{.val {error_msg}}")
       list(nl = FALSE, output = "", error = error_msg)
     })
 
@@ -336,12 +342,11 @@ process_with_agent <- function(user_input) {
           cat(txt, sep = "")
           utils::flush.console()
         },
-        on_tool_call = function(name, args) {
-          cli::cli_alert("Tool: {.fn {name}}")
-        }
+        on_tool_call = function(name, args) {}
       ),
       error = function(e) {
-        cli::cli_alert_danger("LLM API call failed: {conditionMessage(e)}")
+        cat("\033[0m")
+        cli::cli_alert_danger("LLM API call failed: {.val {conditionMessage(e)}}")
         cli::cli_alert_info("Conversation state preserved. You can continue or retry.")
         return(NULL)
       }
@@ -359,6 +364,10 @@ process_with_agent <- function(user_input) {
     }
 
     if (length(tool_calls) > 0) {
+      tool_names <- sapply(tool_calls, function(tc) tc$`function`$name)
+      cat(cli::col_silver(paste0("[", paste(tool_names, collapse = ", "), "]\n")))
+      utils::flush.console()
+
       assistant_msg <- list(
         role = "assistant",
         tool_calls = tool_calls
@@ -382,7 +391,6 @@ process_with_agent <- function(user_input) {
 
         if (tool_name %in% c("execute_r_code", "file_edit") &&
             !is.null(tool_result) && nchar(trimws(tool_result)) > 0) {
-          cat("\n")
           cat(tool_result, "\n")
           utils::flush.console()
         }
@@ -420,15 +428,6 @@ process_with_agent <- function(user_input) {
       if (length(code_blocks) > 0) {
         for (code in code_blocks) {
           tool_result <- tool_execute_r_code(code)
-
-          messages <- c(messages, list(list(
-            role = "user",
-            content = paste0(
-              "The R code I just executed produced this output:\n",
-              tool_result,
-              "\n\nContinue with the analysis or explain the results if done."
-            )
-          )))
         }
         next
       }
@@ -437,6 +436,7 @@ process_with_agent <- function(user_input) {
       break
     }
 
+    cli::cli_alert_warning("Agent returned an empty response. Try rephrasing your query.")
     break
   }
 
@@ -700,8 +700,13 @@ handle_slash_command <- function(input) {
       print.agenticr_config(cfg)
     },
     "/clear" = {
-      agenticr_env$conversation <- list()
-      cli::cli_alert_success("Conversation history cleared.")
+      ans <- readline("Clear all conversation history? This cannot be undone. [y/N] ")
+      if (tolower(trimws(ans)) %in% c("y", "yes")) {
+        agenticr_env$conversation <- list()
+        cli::cli_alert_success("Conversation history cleared.")
+      } else {
+        cli::cli_alert_info("Cancelled.")
+      }
     },
     "/vars" = {
       cat(tool_search_variables(".*"), "\n")
