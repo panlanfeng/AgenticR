@@ -26,6 +26,7 @@ agentic <- function(auto = TRUE, ...) {
   agenticr_env$total_session_tokens <- 0L
   agenticr_env$active_skills <- list()
   agenticr_env$files_read <- list()
+  agenticr_env$todos <- list()
   agenticr_env$session_id <- paste0(format(Sys.time(), "%Y%m%d_%H%M%S"), "_",
                                      paste(sample(c(0:9, letters[1:6]), 8, replace = TRUE), collapse = ""))
   agenticr_env$session_dir <- file.path(
@@ -324,6 +325,71 @@ check_error_loop <- function(recent_errors, tool_result) {
   list(msg = NULL, errors = recent_errors)
 }
 
+#' Parse [TODOLIST]...[/TODOLIST] blocks from LLM content
+#'
+#' Extracts a goal line and checkboxes. Stores in agenticr_env$todos.
+#' Returns the content with todo markup stripped for user display.
+#'
+#' @keywords internal
+parse_todo_list <- function(content) {
+  pattern <- "(?s)\\[TODOLIST\\]\\n?(.*?)\\[/TODOLIST\\]"
+  match <- regexpr(pattern, content, perl = TRUE)
+  if (match == -1) return(content)
+
+  capture_start <- attr(match, "capture.start")[1, 1]
+  capture_len <- attr(match, "capture.length")[1, 1]
+  if (is.na(capture_start) || capture_len <= 0) return(content)
+
+  body <- substr(content, capture_start, capture_start + capture_len - 1)
+  lines <- strsplit(body, "\n")[[1]]
+  lines <- trimws(lines)
+  lines <- lines[nchar(lines) > 0]
+
+  goal <- ""
+  todos <- data.frame(id = integer(), description = character(),
+                      status = character(), stringsAsFactors = FALSE)
+  for (line in lines) {
+    if (grepl("^Goal:", line, ignore.case = TRUE)) {
+      goal <- trimws(sub("^Goal:\\s*", "", line, ignore.case = TRUE))
+    } else if (grepl("^- \\[[ xX]\\]", line)) {
+      done <- grepl("^- \\[[xX]\\]", line)
+      desc <- trimws(sub("^- \\[[ xX]\\]\\s*", "", line))
+      todos <- rbind(todos, data.frame(
+        id = nrow(todos) + 1L,
+        description = desc,
+        status = if (done) "done" else "pending",
+        stringsAsFactors = FALSE
+      ))
+    }
+  }
+
+  if (nrow(todos) > 0) {
+    agenticr_env$todos <- todos
+    attr(agenticr_env$todos, "goal") <- goal
+  }
+
+  gsub("(?s)\\[TODOLIST\\].*?\\[/TODOLIST\\]\\n?", "", content, perl = TRUE)
+}
+
+#' Strip todo markup from content for user display
+#'
+#' @keywords internal
+strip_todo_markup <- function(content) {
+  content <- gsub("(?s)\\[TODOLIST\\].*?\\[/TODOLIST\\]\\n?", "", content, perl = TRUE)
+  trimws(content)
+}
+
+#' Filter assistant-only messages from conversation for response extraction
+#'
+#' @keywords internal
+get_last_assistant_content <- function(conv) {
+  for (i in rev(seq_along(conv))) {
+    m <- conv[[i]]
+    if (m$role == "assistant" && nchar(m$content %||% "") > 0) return(m$content)
+  }
+  ""
+}
+
 #' Process natural language input through the LLM agent
 #'
 #' @keywords internal
@@ -334,6 +400,9 @@ process_with_agent <- function(user_input) {
     dir.create(agenticr_env$outputs_dir, showWarnings = FALSE, recursive = TRUE)
     agenticr_env$session_id <- paste0(format(Sys.time(), "%Y%m%d_%H%M%S"), "_",
                                        paste(sample(c(0:9, letters[1:6]), 8, replace = TRUE), collapse = ""))
+    agenticr_env$turns_file <- file.path(agenticr_env$session_dir, "turns.jsonl")
+    agenticr_env$saved_msg_count <- 0L
+    agenticr_env$turn_counter <- 0L
   }
   cfg <- get_api_config()
   tools <- get_tool_definitions()
@@ -528,10 +597,12 @@ process_with_agent <- function(user_input) {
     }
 
     if (nchar(content) > 0) {
+      content <- parse_todo_list(content)
       code_blocks <- extract_r_code_blocks(content)
 
       if (length(code_blocks) > 0) {
         text_only <- remove_r_code_blocks(content)
+        text_only <- strip_todo_markup(text_only)
         if (nchar(trimws(text_only)) > 0) {
           cat(text_only, "\n")
           utils::flush.console()
@@ -561,6 +632,29 @@ process_with_agent <- function(user_input) {
           )))
         }
         next
+      }
+
+      # Pre-exit check: are there incomplete todos?
+      if (length(agenticr_env$todos) > 0) {
+        pending <- agenticr_env$todos$status == "pending"
+        if (any(pending)) {
+          goal <- attr(agenticr_env$todos, "goal") %||% ""
+          pending_items <- agenticr_env$todos$description[pending]
+          reminders <- paste0(
+            "[TODO REMINDER]\n",
+            if (nchar(goal) > 0) paste0("Goal: ", goal, "\n\n") else "",
+            "Incomplete tasks (", sum(pending), " remaining):\n",
+            paste("- [ ] ", pending_items, collapse = "\n"),
+            "\n\nContinue working. Do not stop until all tasks are complete ",
+            "or the user tells you to stop."
+          )
+          messages <- c(messages, list(list(role = "user", content = reminders)))
+          cat(cli::col_yellow(
+            paste0("\n! ", sum(pending), " task(s) remaining. Continuing...\n")
+          ))
+          utils::flush.console()
+          next
+        }
       }
 
       cat("\n")
@@ -654,6 +748,35 @@ write_turn_history <- function(user_input, result) {
   cat(line, "\n", file = agenticr_env$history_file, append = TRUE)
 }
 
+#' Show current todo list
+#'
+#' @keywords internal
+show_todos <- function() {
+  if (length(agenticr_env$todos) == 0) {
+    cli::cli_alert_info("No active todo list.")
+    return(invisible())
+  }
+  goal <- attr(agenticr_env$todos, "goal") %||% ""
+  if (nchar(goal) > 0) {
+    cli::cli_h2("Goal: {goal}")
+  } else {
+    cli::cli_h2("Tasks")
+  }
+  for (i in seq_len(nrow(agenticr_env$todos))) {
+    item <- agenticr_env$todos[i, ]
+    if (item$status == "done") {
+      cli::cli_li("[x] {item$description}")
+    } else {
+      cli::cli_li("[ ] {item$description}")
+    }
+  }
+  pending <- sum(agenticr_env$todos$status == "pending")
+  if (pending == 0) {
+    cli::cli_alert_success("All tasks complete!")
+  }
+  invisible()
+}
+
 #' Show recent session history
 #'
 #' @keywords internal
@@ -698,6 +821,14 @@ SYSTEM_PROMPT <- paste0(
   "- When user describes what they want in natural language, translate ",
   "their intent into R code and execute it via tools.\n",
   "- When user asks a complex task, break it down and achieve it step by step using tools.\n",
+  "- For multi-step tasks, output a [TODOLIST] block after your first response:\n",
+  "  [TODOLIST]\n",
+  "  Goal: <one-line summary of the overall goal>\n",
+  "  - [ ] <first step>\n",
+  "  - [ ] <second step>\n",
+  "  [/TODOLIST]\n",
+  "  Update the block as you progress: change [ ] to [x] when a step is done.\n",
+  "  The system will remind you of incomplete tasks; continue until all are [x].\n",
   "- Only stop making tool calls when the user's entire request is fully addressed.\n",
   "- When user asks a general question, ",
   "answer it using available tools if needed.\n\n",
@@ -838,11 +969,13 @@ handle_slash_command <- function(input) {
       cli::cli_li("{.code /skill <name>} - Activate a skill")
       cli::cli_li("{.code /skill:off <name>} - Deactivate a skill")
       cli::cli_li("{.code /mcp} - List MCP servers")
+      cli::cli_li("{.code /todo} - Show current task list")
       cli::cli_li("{.code /history} - View recent session history")
       cli::cli_li("{.code exit()} or {.kbd Ctrl+C} - Exit agentic session")
     },
     "/skills" = agentic_skills(),
     "/mcp" = agentic_mcp(),
+    "/todo" = show_todos(),
     "/history" = show_history(),
     "/config" = {
       cfg <- get_api_config()
