@@ -92,7 +92,7 @@ get_tool_definitions <- function() {
             ),
             limit = list(
               type = "integer",
-              description = "Maximum lines to return (default: 800)"
+              description = "Maximum lines to return (default: 2000)"
             )
           ),
           required = list("file_path")
@@ -548,7 +548,7 @@ tool_read_file <- function(file_path, offset = NULL, limit = NULL) {
 
   # Apply offset (1-indexed)
   start_line <- if (is.null(offset) || is.na(offset)) 1L else max(1L, as.integer(offset))
-  MAX_LINES <- 800L
+  MAX_LINES <- 2000L
   limit_val <- if (!is.null(limit) && !is.na(limit)) min(as.integer(limit), MAX_LINES) else MAX_LINES
   end_line <- min(start_line + limit_val - 1L, total_lines)
 

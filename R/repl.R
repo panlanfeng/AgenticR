@@ -360,7 +360,23 @@ process_with_agent <- function(user_input) {
   }
   messages <- c(messages, list(list(role = "user", content = user_content)))
 
-  for (round in 1:cfg$max_rounds) {
+  round <- 0L
+  turn_tokens <- 0L
+  max_turn_tokens <- cfg$max_turn_tokens %||% 100000L
+  while (TRUE) {
+    round <- round + 1L
+
+    # Safety ceiling: prevent true infinite loops
+    if (round > 200L) {
+      cli::cli_alert_warning("Turn exceeded 200 rounds. Stopping to prevent runaway loop.")
+      break
+    }
+
+    if (turn_tokens >= max_turn_tokens) {
+      cli::cli_alert_warning("Turn token budget ({max_turn_tokens}) reached. Start a new turn to continue.")
+      break
+    }
+
     token_count <- estimate_tokens(messages, tools)
     if (token_count > agenticr_env$max_context_tokens * 0.8) {
       messages <- run_compaction(messages)
@@ -401,6 +417,11 @@ process_with_agent <- function(user_input) {
       cli::cli_alert_danger("LLM API call failed after 3 attempts.")
       cli::cli_alert_info("Conversation state preserved. You can continue or retry.")
       break
+    }
+
+    usage <- stream_result$usage
+    if (!is.null(usage) && !is.null(usage$total_tokens)) {
+      turn_tokens <- turn_tokens + as.integer(usage$total_tokens)
     }
 
     content <- stream_result$content

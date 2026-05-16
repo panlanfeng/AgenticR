@@ -168,7 +168,7 @@ agentic_config <- function(..., save = FALSE) {
     }
   }
 
-  for (name in c("api_key", "api_base", "api_model", "temperature", "max_tokens", "max_rounds", "provider")) {
+  for (name in c("api_key", "api_base", "api_model", "temperature", "max_tokens", "max_turn_tokens", "provider")) {
     if (!is.null(args[[name]])) {
       cfg[[name]] <- args[[name]]
     }
@@ -269,7 +269,7 @@ load_config <- function() {
     provider = "deepseek",
     max_tokens = 4096,
     temperature = 0.1,
-    max_rounds = 20
+    max_turn_tokens = 100000
   )
 
   # 1. Config file overrides defaults
@@ -367,7 +367,7 @@ print.agenticr_config <- function(x, ...) {
   cli::cli_li("Model: {x$api_model}")
   cli::cli_li("Temperature: {x$temperature}")
   cli::cli_li("Max tokens: {x$max_tokens}")
-  cli::cli_li("Max rounds: {x$max_rounds}")
+  cli::cli_li("Max turn tokens: {x$max_turn_tokens}")
 }
 
 #' List available provider presets
