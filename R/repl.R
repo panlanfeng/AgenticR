@@ -32,6 +32,8 @@ agentic <- function(auto = TRUE, ...) {
   agenticr_env$session_dir <- file.path(
     Sys.getenv("HOME", unset = "~"), ".agenticr", "sessions", agenticr_env$session_id)
   dir.create(agenticr_env$session_dir, showWarnings = FALSE, recursive = TRUE)
+  agenticr_env$outputs_dir <- file.path(agenticr_env$session_dir, "outputs")
+  dir.create(agenticr_env$outputs_dir, showWarnings = FALSE, recursive = TRUE)
   agenticr_env$history_file <- file.path(agenticr_env$session_dir, "history.jsonl")
   agenticr_env$turn_counter <- 0L
   agenticr_env$ask_permission <- function(prompt) {

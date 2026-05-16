@@ -255,7 +255,44 @@ get_tool_definitions <- function() {
   )
 }
 
-#' Execute a tool call and return the result
+#' Truncate large tool results to avoid bloating LLM context
+#'
+#' Results > 20K tokens are written to a file in the session outputs dir.
+#' The context receives the last 2K tokens + a [full output saved to ...] note.
+#' read_file results are never truncated.
+#'
+#' @keywords internal
+truncate_tool_result <- function(result, tool_name) {
+  if (is.null(result) || nchar(result) == 0) return(result)
+
+  # read_file never truncated — LLM needs full file content
+  if (identical(tool_name, "read_file")) return(result)
+
+  MAX_TOKENS <- 20000
+  PREVIEW_TOKENS <- 2000
+  approx_tokens <- nchar(result) / 3.5
+
+  if (approx_tokens <= MAX_TOKENS) return(result)
+
+  output_file <- file.path(agenticr_env$outputs_dir,
+    paste0("tool_", agenticr_env$turn_counter, "_",
+           gsub("[^a-zA-Z0-9]", "_", tool_name), ".txt"))
+
+  writeLines(result, output_file)
+
+  # Show the LAST 2K tokens (most recent output is most relevant)
+  preview_chars <- PREVIEW_TOKENS * 3.5
+  preview <- if (nchar(result) > preview_chars) {
+    substr(result, nchar(result) - preview_chars + 1, nchar(result))
+  } else result
+
+  paste0(
+    "[Note: full output (", round(approx_tokens), " tokens) saved to ",
+    output_file, ". Use read_file to access.]\n\n",
+    "[Last ", PREVIEW_TOKENS, " tokens preview]\n",
+    preview
+  )
+}
 #'
 #' @param tool_name Name of the tool to execute
 #' @param arguments Named list of arguments
@@ -263,7 +300,7 @@ get_tool_definitions <- function() {
 #'
 #' @keywords internal
 execute_tool <- function(tool_name, arguments) {
-  switch(
+  result <- switch(
     tool_name,
     execute_r_code = tool_execute_r_code(arguments$code),
     get_dataframe_info = tool_get_dataframe_info(arguments$name),
@@ -283,6 +320,7 @@ execute_tool <- function(tool_name, arguments) {
       }
     }
   )
+  truncate_tool_result(result, tool_name)
 }
 
 #' Execute R code and capture output
