@@ -656,6 +656,7 @@ SYSTEM_PROMPT <- paste0(
   "- When user describes what they want in natural language, translate ",
   "their intent into R code and execute it via tools.\n",
   "- When user asks a complex task, break it down and achieve it step by step using tools.\n",
+  "- Only stop making tool calls when the user's entire request is fully addressed.\n",
   "- When user asks a general question, ",
   "answer it using available tools if needed.\n\n",
 
