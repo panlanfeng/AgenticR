@@ -93,6 +93,32 @@ get_tool_definitions <- function() {
     list(
       type = "function",
       "function" = list(
+        name = "get_function_source",
+        description = paste0(
+          "Get the source code of an R function. Returns the full function ",
+          "definition including the body. Use this to understand how a ",
+          "function is implemented. Specify package for functions from ",
+          "specific packages."
+        ),
+        parameters = list(
+          type = "object",
+          properties = list(
+            name = list(
+              type = "string",
+              description = "Name of the R function to look up"
+            ),
+            package = list(
+              type = "string",
+              description = "Package name where the function is defined (optional)"
+            )
+          ),
+          required = list("name")
+        )
+      )
+    ),
+    list(
+      type = "function",
+      "function" = list(
         name = "get_function_help",
         description = paste0(
           "Get R documentation for a function. Returns the help page content ",
@@ -244,6 +270,7 @@ execute_tool <- function(tool_name, arguments) {
     search_variables = tool_search_variables(arguments$pattern),
     read_file = tool_read_file(arguments$file_path),
     get_function_help = tool_get_function_help(arguments$name, arguments$package),
+    get_function_source = tool_get_function_source(arguments$name, arguments$package),
     grep_search = tool_grep_search(arguments$pattern, arguments$path, arguments$context_lines),
     file_edit = tool_file_edit(arguments$file_path, arguments$old_string, arguments$new_string, arguments$replace_all),
     file_write = tool_file_write(arguments$file_path, arguments$content),
@@ -412,6 +439,41 @@ tool_read_file <- function(file_path) {
   agenticr_env$files_read[[resolved]] <- TRUE
 
   paste(content, collapse = "\n")
+}
+
+#' Get R function source code
+#'
+#' @keywords internal
+tool_get_function_source <- function(name, package = NULL) {
+  if (is.null(name) || nchar(trimws(name)) == 0) {
+    return("Error: No function name provided")
+  }
+
+  src <- tryCatch({
+    if (!is.null(package) && nchar(trimws(package)) > 0) {
+      fn <- getExportedValue(package, name)
+    } else {
+      fn <- get(name, envir = .GlobalEnv, inherits = TRUE)
+    }
+    paste(deparse(fn), collapse = "\n")
+  }, error = function(e) {
+    tryCatch({
+      if (!is.null(package) && nchar(trimws(package)) > 0) {
+        fn <- getFromNamespace(name, package)
+      } else {
+        fn <- getAnywhere(name)$objs[[1]]
+      }
+      paste(deparse(fn), collapse = "\n")
+    }, error = function(e2) paste0("Error: ", conditionMessage(e)))
+  })
+
+  if (grepl("^Error:", src)) return(src)
+
+  if (nchar(src) > 4000) {
+    src <- paste0(substr(src, 1, 4000), "\n... [truncated]")
+  }
+
+  src
 }
 
 #' Get R function documentation
