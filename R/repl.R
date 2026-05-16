@@ -13,8 +13,8 @@
 #' @export
 agentic <- function(auto = TRUE, ...) {
   if (agenticr_env$is_active) {
-    cli::cli_alert_warning("AgenticR session is already active.")
-    return(invisible())
+    cli::cli_alert_warning("Previous AgenticR session may not have exited cleanly. Resetting...")
+    agenticr_env$is_active <- FALSE
   }
 
   agenticr_env$is_active <- TRUE
@@ -67,15 +67,18 @@ agentic <- function(auto = TRUE, ...) {
     if (key == "") return(invisible())
     agentic_config(api_key = key, save = TRUE)
     cli::cli_text("")
-    tryCatch(get_api_config(), error = function(e2) {
+    cfg2 <- tryCatch(get_api_config(), error = function(e2) {
       cli::cli_alert_danger("Still no valid key. Exiting.")
-      return(NULL)
+      NULL
     })
-    return(get_api_config())
+    if (is.null(cfg2)) return(invisible())
+    cfg2
   })
   if (is.null(cfg)) return(invisible())
 
   cli::cli_alert_info("Using model: {cfg$api_model} at {cfg$api_base}")
+
+  mcp_connect_all()
 
   while (TRUE) {
     input <- tryCatch(
@@ -433,6 +436,8 @@ process_with_agent <- function(user_input) {
       cat("\n")
       break
     }
+
+    break
   }
 
   conv <- messages[sapply(messages, function(m) m$role != "system")]
@@ -773,8 +778,17 @@ agentic_enable <- function(auto_process = TRUE) {
     auto_process <- FALSE
   }
 
+  old_error <- getOption("error")
+  options(agenticr.old_error_handler = old_error)
+
+  agenticr_env$.error_handler_active <- FALSE
+
   options(
     agenticr.error_handler = function() {
+      if (isTRUE(agenticr_env$.error_handler_active)) return()
+      agenticr_env$.error_handler_active <- TRUE
+      on.exit(agenticr_env$.error_handler_active <- FALSE)
+
       err_call <- sys.call(1)
       if (is.null(err_call)) return()
 
@@ -818,8 +832,13 @@ agentic_enable <- function(auto_process = TRUE) {
 #' @export
 agentic_disable <- function() {
   if (!is.null(getOption("agenticr.error_handler"))) {
-    options(agenticr.error_handler = NULL)
-    options(error = NULL)
+    old_error <- getOption("agenticr.old_error_handler")
+    if (!is.null(old_error)) {
+      options(error = old_error)
+    } else {
+      options(error = NULL)
+    }
+    options(agenticr.error_handler = NULL, agenticr.old_error_handler = NULL)
     cli::cli_alert_success("AgenticR error interceptor disabled.")
   }
   invisible()

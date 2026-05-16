@@ -308,7 +308,7 @@ execute_tool <- function(tool_name, arguments) {
     read_file = tool_read_file(arguments$file_path),
     get_function_help = tool_get_function_help(arguments$name, arguments$package),
     get_function_source = tool_get_function_source(arguments$name, arguments$package),
-    grep_search = tool_grep_search(arguments$pattern, arguments$path, arguments$context_lines),
+    grep_search = tool_grep_search(arguments$pattern, arguments$path %||% ".", arguments$context_lines %||% 2L),
     file_edit = tool_file_edit(arguments$file_path, arguments$old_string, arguments$new_string, arguments$replace_all),
     file_write = tool_file_write(arguments$file_path, arguments$content),
     install_package = tool_install_package(arguments$name),
@@ -378,8 +378,10 @@ tool_execute_r_code <- function(code) {
   }
 
   output <- trimws(output)
-  if (nchar(output) > 4000) {
-    output <- paste0(substr(output, 1, 4000), "\n... [output truncated]")
+  MAX_CHARS <- 4000L
+  if (nchar(output) > MAX_CHARS) {
+    msg <- "\n... [output truncated]"
+    output <- paste0(substr(output, 1, MAX_CHARS - nchar(msg)), msg)
   }
 
   output

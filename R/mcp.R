@@ -97,6 +97,9 @@ mcp_send_request <- function(srv, method, params, timeout = 10) {
   start <- Sys.time()
   buf <- ""
   while (TRUE) {
+    if (!srv$process$is_alive()) {
+      return(NULL)
+    }
     srv$process$poll_io(100)
     if (srv$process$can_read()) {
       chunk <- srv$process$read_output_lines(1)
@@ -294,22 +297,12 @@ agentic_mcp <- function() {
 # MCP Tool Executor — routes tool calls to MCP servers
 # ============================================================================
 
-#' Execute an MCP tool call from the agent loop
+#' Execute an MCP tool call from the agent loop (delegates to mcp_dispatch)
 #'
 #' @keywords internal
 mcp_execute_tool <- function(tool_name, arguments) {
   if (!startsWith(tool_name, "mcp_")) {
     return(NULL)
   }
-  parts <- strsplit(substring(tool_name, 5), "_")[[1]]
-  if (length(parts) < 2) {
-    return(paste0("Invalid MCP tool names: ", tool_name))
-  }
-  server_name <- parts[1]
-  tool_name_only <- paste(parts[-1], collapse = "_")
-  srv <- agenticr_env$mcp_servers[[server_name]]
-  if (is.null(srv) || !isTRUE(srv$connected)) {
-    return(paste0("MCP server '", server_name, "' not connected"))
-  }
-  mcp_call_tool(srv, tool_name_only, arguments)
+  mcp_dispatch(tool_name, arguments)
 }

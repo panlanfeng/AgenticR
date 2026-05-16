@@ -121,8 +121,8 @@ auto_detect_key <- function() {
   if (nchar(value) > 0) {
     return(list(
       api_key = value,
-      api_base = Sys.getenv("AGENTICR_API_BASE", unset = "https://api.deepseek.com/v1"),
-      api_model = Sys.getenv("AGENTICR_MODEL", unset = "deepseek-chat"),
+      api_base = Sys.getenv("AGENTICR_API_BASE", unset = "https://api.deepseek.com"),
+      api_model = Sys.getenv("AGENTICR_MODEL", unset = "deepseek-v4-pro"),
       provider = "custom"
     ))
   }
@@ -217,7 +217,12 @@ agentic_setup <- function() {
 
   choice <- readline("Choose provider [1]: ")
   if (choice == "") choice <- "1"
-  provider <- provider_names[as.integer(choice)]
+  choice_num <- suppressWarnings(as.integer(choice))
+  if (is.na(choice_num) || choice_num < 1 || choice_num > length(provider_names)) {
+    cli::cli_alert_danger("Invalid choice")
+    return(invisible())
+  }
+  provider <- provider_names[choice_num]
   if (is.na(provider)) {
     cli::cli_alert_danger("Invalid choice")
     return(invisible())
@@ -321,6 +326,8 @@ save_config <- function(cfg) {
   }
   config_file <- file.path(config_dir, "config.yml")
   yaml::write_yaml(cfg, config_file)
+  Sys.chmod(config_file, "0600")
+  Sys.chmod(config_dir, "0700")
   cli::cli_alert_success("Config saved to {.file {config_file}}")
 }
 

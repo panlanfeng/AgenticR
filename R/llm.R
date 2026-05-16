@@ -133,6 +133,7 @@ chat_completion_stream <- function(messages, tools = NULL,
   has_reasoning <- FALSE
   has_content <- FALSE
   first_chunk <- NULL
+  line_buf <- ""
 
   response <- httr::POST(
     url = url,
@@ -146,7 +147,14 @@ chat_completion_stream <- function(messages, tools = NULL,
     httr::write_stream(function(x) {
       raw_text <- rawToChar(x)
       if (is.null(first_chunk)) first_chunk <<- raw_text
-      lines <- strsplit(raw_text, "\n")[[1]]
+      line_buf <<- paste0(line_buf, raw_text)
+      lines <- strsplit(line_buf, "\n")[[1]]
+      if (nchar(raw_text) == 0 || substr(raw_text, nchar(raw_text), nchar(raw_text)) != "\n") {
+        line_buf <<- lines[length(lines)]
+        lines <- lines[-length(lines)]
+      } else {
+        line_buf <<- ""
+      }
       for (line in lines) {
         line <- trimws(line)
         if (line == "" || !startsWith(line, "data: ")) next
@@ -217,10 +225,14 @@ chat_completion_stream <- function(messages, tools = NULL,
   )
 
   if (httr::status_code(response) >= 400) {
-    err_text <- first_chunk
-    if (is.null(err_text)) err_text <- "Unknown error"
-    err_text <- gsub("^data: ", "", err_text)
-    err_text <- trimws(err_text)
+    err_text <- tryCatch(
+      httr::content(response, "text", encoding = "UTF-8"),
+      error = function(e) {
+        fc <- first_chunk
+        if (is.null(fc)) fc <- "Unknown error"
+        trimws(gsub("^data: ", "", fc))
+      }
+    )
     if (nchar(err_text) > 300) err_text <- substr(err_text, 1, 300)
     stop("LLM API error (", httr::status_code(response), "): ", err_text)
   }
@@ -325,7 +337,6 @@ run_compaction <- function(messages) {
   while (estimate_tokens(conv) > 8000 && length(conv) > 4) {
     conv <- conv[-1]
   }
-  agenticr_env$conversation <- conv
 
   # Rebuild messages with trimmed conversation
   new_msgs <- messages[1:(conv_start - 1)]
@@ -336,7 +347,8 @@ run_compaction <- function(messages) {
     new_msgs <- c(new_msgs, conv)
   }
   last_slot <- messages[[length(messages)]]
-  if (last_slot$role == "user") {
+  new_has_last <- length(conv) > 0 && identical(conv[[length(conv)]], last_slot)
+  if (last_slot$role == "user" && !new_has_last) {
     new_msgs <- c(new_msgs, list(last_slot))
   }
 
