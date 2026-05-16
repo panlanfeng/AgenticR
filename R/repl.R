@@ -363,6 +363,7 @@ process_with_agent <- function(user_input) {
   round <- 0L
   turn_tokens <- 0L
   max_turn_tokens <- cfg$max_turn_tokens %||% 100000L
+  recent_errors <- list()
   while (TRUE) {
     round <- round + 1L
 
@@ -473,6 +474,30 @@ process_with_agent <- function(user_input) {
             !is.null(tool_result) && nchar(trimws(tool_result)) > 0) {
           cat(tool_result, "\n")
           utils::flush.console()
+        }
+
+        # Detect repeated identical errors — break error loops
+        if (tool_name == "execute_r_code" && grepl("^Error:", tool_result %||% "")) {
+          err_key <- substr(tool_result, 1, 80)
+          recent_errors <- c(tail(recent_errors, 3), list(err_key))
+          recent_exec_errors <- tail(recent_errors, 3)
+          if (length(recent_exec_errors) >= 3 &&
+              length(unique(recent_exec_errors)) == 1) {
+            messages <- c(messages, list(list(
+              role = "user",
+              content = paste0(
+                "You have hit the same R error 3 times: ", err_key, "\n",
+                "Stop retrying. Change your approach:\n",
+                "- Use a different R function or syntax\n",
+                "- Use grep_search tool instead of writing grep/find code\n",
+                "- Ask the user which files or tests to focus on\n",
+                "- If using a custom function that shadows a base R function, rename it"
+              )
+            )))
+            recent_errors <- list()
+          }
+        } else if (tool_name == "execute_r_code") {
+          recent_errors <- list()
         }
 
         messages <- c(messages, list(list(
