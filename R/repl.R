@@ -727,6 +727,7 @@ SYSTEM_PROMPT <- paste0(
   "- When user describes what they want in natural language, translate ",
   "their intent into R code and execute it via tools.\n",
   "- When user asks a complex task, break it down and achieve it step by step using tools.\n",
+  "- Use the list_files tool to explore repository structure when needed.\n",
   "- Break down and manage your work with the TodoWrite tool.\n",
   "  Use it to plan your work and help the user track your progress.\n",
   "  Mark each task as completed as soon as you are done with the task.\n",

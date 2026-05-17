@@ -185,6 +185,30 @@ get_tool_definitions <- function() {
     list(
       type = "function",
       "function" = list(
+        name = "list_files",
+        description = paste0(
+          "List files and directories in a path. Automatically skips .git, ",
+          ".svn, and common build artifacts. If more than 100 files match, ",
+          "suggests narrowing with the pattern parameter or using grep_search."
+        ),
+        parameters = list(
+          type = "object",
+          properties = list(
+            path = list(
+              type = "string",
+              description = "Directory to list (default: current working directory)"
+            ),
+            pattern = list(
+              type = "string",
+              description = "Glob-style pattern to filter (e.g. '*.R', '**/*.py'). Default: all files."
+            )
+          )
+        )
+      )
+    ),
+    list(
+      type = "function",
+      "function" = list(
         name = "file_edit",
         description = paste0(
           "Replace a string in a file. The old_string must be unique -- ",
@@ -357,6 +381,7 @@ execute_tool <- function(tool_name, arguments) {
     get_function_help = tool_get_function_help(arguments$name, arguments$package),
     get_function_source = tool_get_function_source(arguments$name, arguments$package),
     grep_search = tool_grep_search(arguments$pattern, arguments$path %||% ".", arguments$context_lines %||% 2L),
+    list_files = tool_list_files(arguments$path, arguments$pattern),
     file_edit = tool_file_edit(arguments$file_path, arguments$old_string, arguments$new_string, arguments$replace_all),
     file_write = tool_file_write(arguments$file_path, arguments$content),
     install_package = tool_install_package(arguments$name),
@@ -690,6 +715,64 @@ tool_get_function_help <- function(name, package = NULL) {
   }
 
   paste(help_lines, collapse = "\n")
+}
+
+#' List files in a directory, ignoring VCS and build artifacts
+#'
+#' @keywords internal
+tool_list_files <- function(path = NULL, pattern = NULL) {
+  resolved <- path.expand(path %||% ".")
+  parts <- strsplit(resolved, "[/\\\\]")[[1]]
+  if (length(parts) > 0 && grepl("^~", parts[1])) {
+    resolved <- normalizePath(resolved, mustWork = FALSE)
+  }
+
+  SKIP_DIRS <- c(".git", ".svn", ".hg", "__pycache__", ".Rproj.user",
+                 "node_modules", "renv", "packrat", ".venv", "venv")
+
+  recursive <- !is.null(pattern) && grepl("\\*\\*", pattern)
+  files <- list.files(resolved, pattern = pattern,
+                      recursive = recursive, all.files = TRUE,
+                      full.names = FALSE, include.dirs = TRUE)
+
+  for (d in SKIP_DIRS) {
+    files <- files[!grepl(paste0("(^|/)", gsub("\\.", "\\\\.", d), "($|/)"), files)]
+  }
+  files <- files[!files %in% c(".", "..")]
+
+  if (!is.null(pattern) && !recursive) {
+    files <- files[!grepl("/", files)]
+  }
+
+  if (length(files) > 100) {
+    return(paste0(
+      length(files), " files found. Too many to list.\n",
+      "Use the 'pattern' parameter to narrow results (e.g. pattern='*.R' or pattern='test*'), ",
+      "or use grep_search to search by content instead."
+    ))
+  }
+
+  if (length(files) == 0) {
+    return(paste0("No files found in ", resolved,
+                  if (!is.null(pattern)) paste0(" matching '", pattern, "'") else ""))
+  }
+
+  lines <- character(0)
+  for (f in files) {
+    full <- file.path(resolved, f)
+    is_dir <- dir.exists(full)
+    prefix <- if (is_dir) "/" else ""
+    suffix <- if (!is_dir) {
+      tryCatch({
+        sz <- file.info(full)$size
+        if (!is.na(sz)) paste0(" (", format(sz, big.mark = ","), " bytes)") else ""
+      }, error = function(e) "")
+    } else ""
+    lines <- c(lines, paste0(prefix, f, suffix))
+  }
+
+  paste(c(paste0(length(lines), " entries in ", resolved), lines),
+        collapse = "\n")
 }
 
 #' Search file contents for a regex pattern using rg or grep
