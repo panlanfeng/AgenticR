@@ -542,7 +542,10 @@ process_with_agent <- function(user_input) {
 
   round <- 0L
   turn_tokens <- 0L
-  max_turn_tokens <- cfg$max_turn_tokens %||% 100000L
+  max_turn_tokens <- min(
+    cfg$max_turn_tokens %||% 256000L,
+    as.integer(agenticr_env$max_context_tokens * 0.3)
+  )
   recent_errors <- list()
   while (TRUE) {
     round <- round + 1L

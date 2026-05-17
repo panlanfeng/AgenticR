@@ -34,7 +34,7 @@ agenticr_env$is_active <- FALSE
 agenticr_env$stable_summary <- NULL
 agenticr_env$context_injected <- FALSE
 agenticr_env$last_known_cwd <- ""
-agenticr_env$max_context_tokens <- 128000L
+agenticr_env$max_context_tokens <- 256000L
 agenticr_env$memory_file <- file.path(
   Sys.getenv("HOME", unset = "~"),
   ".agenticr",

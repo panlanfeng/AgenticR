@@ -603,6 +603,15 @@ tool_read_file <- function(file_path, offset = NULL, limit = NULL) {
     return(paste0("Error: File '", file_path, "' not found"))
   }
 
+  fsize <- file.info(file_path)$size
+  if (!is.na(fsize) && fsize > 262144) {
+    return(paste0(
+      "The file is too large (", format(fsize, big.mark = ","), " bytes). ",
+      "Use offset and limit parameters to read selected lines of the file, ",
+      "or search for specific content instead of reading the whole file."
+    ))
+  }
+
   content <- tryCatch(
     readLines(file_path, warn = FALSE),
     error = function(e) return(paste0("Error reading file: ", conditionMessage(e)))
@@ -630,10 +639,19 @@ tool_read_file <- function(file_path, offset = NULL, limit = NULL) {
     lines <- c(sprintf("[Starting at line %d of %d total]", start_line, total_lines), lines)
   }
 
+  result <- paste(lines, collapse = "\n")
+  MAX_CHARS <- 25000L
+  if (nchar(result) > MAX_CHARS) {
+    return(paste0(
+      "The file content exceeds ", MAX_CHARS, " characters. ",
+      "Use offset and limit parameters to read selected lines of the file, ",
+      "or search for specific content instead of reading the whole file."
+    ))
+  }
   resolved <- normalizePath(file_path, mustWork = FALSE)
   agenticr_env$files_read[[resolved]] <- TRUE
 
-  paste(lines, collapse = "\n")
+  result
 }
 
 #' Get R function source code
