@@ -608,6 +608,15 @@ process_with_agent <- function(user_input) {
       turn_tokens <- turn_tokens + as.integer(usage$total_tokens)
     }
 
+    # Compute cache hit from prefix vs total messages
+    prefix_msgs <- messages[1:min(5L, length(messages))]
+    prefix_tokens <- estimate_tokens(prefix_msgs, NULL)
+    total_msg_tokens <- estimate_tokens(messages, tools)
+    cache_hit <- if (total_msg_tokens > 0) max(0L, as.integer(prefix_tokens)) else 0L
+    cache_miss <- max(0L, as.integer(total_msg_tokens - prefix_tokens))
+    cache_total <- cache_hit + cache_miss
+    cache_pct <- if (cache_total > 0) round(cache_hit / cache_total * 100) else NA_integer_
+
     content <- stream_result$content
     reasoning <- stream_result$reasoning_content
     tool_calls <- stream_result$tool_calls
@@ -719,6 +728,11 @@ process_with_agent <- function(user_input) {
       }
 
       cat("\n")
+      if (!is.na(cache_pct)) {
+        cat(cli::col_silver(sprintf("cache: %d%% hit (%d/%d tokens)\n",
+            cache_pct, cache_hit, cache_total)))
+        utils::flush.console()
+      }
       break
     }
 
