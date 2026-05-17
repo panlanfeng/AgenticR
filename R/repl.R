@@ -348,27 +348,25 @@ process_with_agent <- function(user_input) {
 
   messages <- list(list(role = "system", content = SYSTEM_PROMPT))
 
-  if (!agenticr_env$context_injected) {
-    agenticr_env$context_injected <- TRUE
-    agents_md <- load_agents_md()
-    if (nchar(agents_md) > 0) {
-      messages <- c(messages, list(list(
-        role = "user",
-        content = paste0("[AGENTS.md -- user instructions]\n", agents_md)
-      )))
-    }
-    active <- get_active_skill_prompts()
-    if (nchar(active) > 0) {
-      messages <- c(messages, list(list(
-        role = "user",
-        content = active
-      )))
-    }
+  if (!agenticr_env$context_injected) agenticr_env$context_injected <- TRUE
+  agents_md <- load_agents_md()
+  if (nchar(agents_md) > 0) {
     messages <- c(messages, list(list(
       role = "user",
-      content = build_stable_context()
+      content = paste0("[AGENTS.md -- user instructions]\n", agents_md)
     )))
   }
+  active <- get_active_skill_prompts()
+  if (nchar(active) > 0) {
+    messages <- c(messages, list(list(
+      role = "user",
+      content = active
+    )))
+  }
+  messages <- c(messages, list(list(
+    role = "user",
+    content = build_stable_context()
+  )))
 
   if (!is.null(agenticr_env$stable_summary)) {
     messages <- c(messages, list(list(
@@ -577,7 +575,8 @@ process_with_agent <- function(user_input) {
 
   conv <- messages[sapply(messages, function(m) {
     m$role != "system" &&
-    !grepl("^\\[Compaction summary\\]", m$content %||% "")
+    !grepl("^\\[(AGENTS\\.md|Active skill:|Stable context|Compaction summary)\\]",
+           m$content %||% "")
   })]
   conv <- sanitize_messages(conv)
 
