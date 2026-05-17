@@ -81,6 +81,19 @@ agentic <- function(auto = TRUE, ...) {
 
   mcp_connect_all()
 
+  run_agentic_repl()
+
+  cli::cli_text("")
+  cli::cli_alert_info("Exiting. Session saved to {.file {agenticr_env$session_dir}}")
+  cli::cli_text("Conversation: {.file {agenticr_env$turns_file}}")
+  cli::cli_text("Resume with: {.code agentic_resume(\"{agenticr_env$session_id}\")}")
+  invisible()
+}
+
+#' Internal REPL loop — shared by agentic() and agentic_resume()
+#'
+#' @keywords internal
+run_agentic_repl <- function() {
   while (TRUE) {
     input <- tryCatch(
       readline(prompt = cli::col_blue("agent> ")),
@@ -125,11 +138,148 @@ agentic <- function(auto = TRUE, ...) {
 
     utils::flush.console()
   }
+}
+
+#' Resume a previous agentic session from its turns.jsonl file
+#'
+#' @param session_id Session ID (e.g. "20250515_120000_a1b2c3d4")
+#' @param ... Not used
+#' @export
+agentic_resume <- function(session_id, ...) {
+  sessions_dir <- file.path(Sys.getenv("HOME", unset = "~"), ".agenticr", "sessions")
+  session_dir <- file.path(sessions_dir, session_id)
+
+  if (!dir.exists(session_dir)) {
+    cli::cli_alert_danger("Session not found: {.val {session_id}}")
+    cli::cli_text("Use {.code agentic_sessions()} to list available sessions.")
+    return(invisible())
+  }
+
+  turns_file <- file.path(session_dir, "turns.jsonl")
+  if (!file.exists(turns_file)) {
+    cli::cli_alert_danger("No conversation found for session {.val {session_id}}")
+    return(invisible())
+  }
+
+  lines <- tryCatch(
+    readLines(turns_file, warn = FALSE),
+    error = function(e) {
+      cli::cli_alert_danger("Failed to read turns file: {conditionMessage(e)}")
+      return(character(0))
+    }
+  )
+
+  if (length(lines) == 0) {
+    cli::cli_alert_danger("Session {.val {session_id}} has no conversation history.")
+    return(invisible())
+  }
+
+  conv <- list()
+  compaction_summary <- NULL
+  for (line in lines) {
+    msg <- tryCatch(
+      jsonlite::fromJSON(line, simplifyVector = FALSE),
+      error = function(e) NULL
+    )
+    if (is.null(msg)) next
+
+    if (grepl("^\\[Compaction summary\\]", msg$content %||% "")) {
+      compaction_summary <- msg$content
+    }
+
+    conv <- c(conv, list(msg))
+  }
+
+  if (length(conv) == 0) {
+    cli::cli_alert_danger("No valid messages found in session {.val {session_id}}")
+    return(invisible())
+  }
+
+  agenticr_env$stable_summary <- compaction_summary
+  agenticr_env$conversation <- Filter(function(m) {
+    !grepl("^\\[(AGENTS\\.md|Active skill:|Stable context|Compaction summary)\\]",
+           m$content %||% "")
+  }, conv)
+  agenticr_env$context_injected <- TRUE
+
+  agenticr_env$is_active <- TRUE
+  agenticr_env$last_known_cwd <- getwd()
+  agenticr_env$session_start <- Sys.time()
+  agenticr_env$last_memory_extract_tokens <- 0L
+  agenticr_env$total_session_tokens <- 0L
+  agenticr_env$active_skills <- list()
+  agenticr_env$files_read <- list()
+  agenticr_env$todos <- list()
+  agenticr_env$session_id <- session_id
+  agenticr_env$session_dir <- session_dir
+  agenticr_env$outputs_dir <- file.path(session_dir, "outputs")
+  agenticr_env$history_file <- file.path(session_dir, "history.jsonl")
+  agenticr_env$turns_file <- turns_file
+  agenticr_env$turn_counter <- 0L
+  agenticr_env$saved_msg_count <- length(agenticr_env$conversation)
+  agenticr_env$ask_permission <- function(prompt) {
+    cli::cli_alert_warning(paste0("Permission required: ", prompt))
+    ans <- readline("Proceed? [y/N] ")
+    tolower(trimws(ans)) %in% c("y", "yes")
+  }
+
+  on.exit({
+    agenticr_env$is_active <- FALSE
+    agenticr_env$conversation <- list()
+    mcp_disconnect_all()
+  })
+
+  cli::cli_h1("AgenticR — Resumed Session")
+  cli::cli_text("Session: {.file {session_id}}")
+  cli::cli_text("Conversation: {.val {length(conv)}} messages restored.")
+  load_r_history()
+  enable_tab_completion()
+
+  cfg <- tryCatch(get_api_config(), error = function(e) {
+    cli::cli_alert_danger("{.val {e$message}}")
+    return(NULL)
+  })
+  if (is.null(cfg)) return(invisible())
+
+  cli::cli_text("{.emph {cfg$api_model}} @ {.url {cfg$api_base}}")
+  mcp_connect_all()
+
+  run_agentic_repl()
 
   cli::cli_text("")
   cli::cli_alert_info("Exiting. Session saved to {.file {agenticr_env$session_dir}}")
   cli::cli_text("Conversation: {.file {agenticr_env$turns_file}}")
   cli::cli_text("Resume with: {.code agentic_resume(\"{agenticr_env$session_id}\")}")
+  invisible()
+}
+
+#' List available sessions for resuming
+#'
+#' @export
+agentic_sessions <- function() {
+  sessions_dir <- file.path(Sys.getenv("HOME", unset = "~"), ".agenticr", "sessions")
+  if (!dir.exists(sessions_dir)) {
+    cli::cli_alert_info("No sessions directory found.")
+    return(invisible())
+  }
+
+  dirs <- list.dirs(sessions_dir, recursive = FALSE, full.names = FALSE)
+  dirs <- dirs[grepl("^\\d{8}_\\d{6}_[0-9a-f]+$", dirs)]
+
+  if (length(dirs) == 0) {
+    cli::cli_alert_info("No sessions found. Start one with {.code agentic()}.")
+    return(invisible())
+  }
+
+  cli::cli_h2("Available Sessions")
+  for (d in sort(dirs, decreasing = TRUE)) {
+    turns_file <- file.path(sessions_dir, d, "turns.jsonl")
+    n_turns <- if (file.exists(turns_file)) {
+      tryCatch(length(readLines(turns_file, warn = FALSE)), error = function(e) 0)
+    } else 0
+    cli::cli_li("{.val {d}} ({n_turns} messages)")
+  }
+  cli::cli_text("Resume with: {.code agentic_resume(\"<id>\")}")
   invisible()
 }
 
@@ -873,9 +1023,12 @@ handle_slash_command <- function(input) {
       cli::cli_li("{.code /mcp} - List MCP servers")
       cli::cli_li("{.code /todo} - Show current task list")
       cli::cli_li("{.code /history} - View recent session history")
+      cli::cli_li("{.code /sessions} - List available sessions to resume")
+      cli::cli_li("{.code /resume <id>} - Resume a previous session")
       cli::cli_li("{.code exit()} or {.kbd Ctrl+C} - Exit agentic session")
     },
     "/skills" = agentic_skills(),
+    "/sessions" = agentic_sessions(),
     "/mcp" = agentic_mcp(),
     "/todo" = show_todos(),
     "/history" = show_history(),
@@ -912,6 +1065,10 @@ handle_slash_command <- function(input) {
       } else if (grepl("^/info\\s", input)) {
         var_name <- trimws(sub("^/info\\s+", "", input))
         cat(tool_get_dataframe_info(var_name), "\n")
+      } else if (grepl("^/resume\\s", input)) {
+        session_id <- trimws(sub("^/resume\\s+", "", input))
+        agenticr_env$is_active <- FALSE
+        agentic_resume(session_id)
       } else {
         cli::cli_alert_warning("Unknown command: {input}. Type /help for help.")
       }
