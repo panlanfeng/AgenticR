@@ -260,6 +260,45 @@ get_tool_definitions <- function() {
           required = list("name")
         )
       )
+    ),
+    list(
+      type = "function",
+      "function" = list(
+        name = "todo_write",
+        description = paste0(
+          "Use this tool to create and manage a structured task list for your coding session. ",
+          "Use it to track progress, break down complex tasks, and show the user what you are working on. ",
+          "Only have one task as in_progress at a time. Complete existing tasks before starting new ones."
+        ),
+        parameters = list(
+          type = "object",
+          properties = list(
+            todos = list(
+              type = "array",
+              description = "The updated todo list",
+              items = list(
+                type = "object",
+                properties = list(
+                  content = list(
+                    type = "string",
+                    description = "Brief description of the task"
+                  ),
+                  status = list(
+                    type = "string",
+                    description = "Status: pending, in_progress, completed, or cancelled"
+                  ),
+                  priority = list(
+                    type = "string",
+                    description = "Priority: high, medium, or low"
+                  )
+                ),
+                required = list("content", "status", "priority")
+              )
+            )
+          ),
+          required = list("todos")
+        )
+      )
     )
   )
 }
@@ -321,6 +360,7 @@ execute_tool <- function(tool_name, arguments) {
     file_edit = tool_file_edit(arguments$file_path, arguments$old_string, arguments$new_string, arguments$replace_all),
     file_write = tool_file_write(arguments$file_path, arguments$content),
     install_package = tool_install_package(arguments$name),
+    todo_write = tool_todo_write(arguments$todos),
     {
       if (startsWith(tool_name, "mcp_")) {
         mcp_execute_tool(tool_name, arguments)
@@ -880,4 +920,39 @@ tool_install_package <- function(name) {
   }
 
   paste0("Installation of '", name, "' was declined by user.")
+}
+
+#' Update the todo list state from LLM tool call
+#'
+#' @keywords internal
+tool_todo_write <- function(todos) {
+  if (is.null(todos) || length(todos) == 0) {
+    return("Error: todos must be a non-empty array of tasks")
+  }
+
+  df <- data.frame(
+    id = integer(),
+    content = character(),
+    status = character(),
+    priority = character(),
+    stringsAsFactors = FALSE
+  )
+
+  for (i in seq_along(todos)) {
+    t <- todos[[i]]
+    df <- rbind(df, data.frame(
+      id = i,
+      content = t$content %||% "",
+      status = t$status %||% "pending",
+      priority = t$priority %||% "medium",
+      stringsAsFactors = FALSE
+    ))
+  }
+
+  agenticr_env$todos <- df
+  paste0(
+    "Todos have been modified successfully. Ensure that you ",
+    "continue to use the todo list to track your progress. ",
+    "Please proceed with the current tasks if applicable."
+  )
 }
