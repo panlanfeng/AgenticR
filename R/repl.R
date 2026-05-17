@@ -4,7 +4,7 @@
 #' at the prompt. Natural language is routed to an LLM agent that generates and
 #' executes R code. Normal R code is executed directly.
 #'
-#' Use Ctrl+C or type exit() to quit the agentic session. Conversation history
+#' Use Ctrl+C twice or type exit() to quit the agentic session. Conversation history
 #' is maintained between turns for context-aware assistance.
 #'
 #' @param auto If TRUE (default), tries to auto-configure from environment.
@@ -55,7 +55,7 @@ agentic <- function(auto = TRUE, ...) {
 
   cli::cli_h1("AgenticR - AI-Powered R Console")
   cli::cli_text("Type natural language or R code.")
-  cli::cli_text("Type {.code exit()} or press {.kbd Ctrl+C} to quit.")
+  cli::cli_text("Type {.code exit()} or press {.kbd Ctrl+C} twice to quit.")
   cli::cli_text("Type {.code /help} for assistance.")
   load_r_history()
   enable_tab_completion()
@@ -97,16 +97,24 @@ agentic <- function(auto = TRUE, ...) {
 #'
 #' @keywords internal
 run_agentic_repl <- function() {
+  agenticr_env$interrupt_pending <- FALSE
   while (TRUE) {
     input <- tryCatch(
       readline(prompt = cli::col_blue("agent> ")),
       interrupt = function(e) {
         cat("\033[0m\n")
-        return(NULL)
+        if (isTRUE(agenticr_env$interrupt_pending)) {
+          agenticr_env$interrupt_pending <- FALSE
+          return(NULL)
+        }
+        agenticr_env$interrupt_pending <- TRUE
+        cli::cli_alert_info("Press {.kbd Ctrl+C} again to exit, or type to continue.")
+        return("")
       }
     )
 
     if (is.null(input)) break
+    agenticr_env$interrupt_pending <- FALSE
 
     input <- trimws(input)
     if (input %in% c("exit()", "quit()", "exit", "quit", "q")) break
@@ -1034,7 +1042,7 @@ handle_slash_command <- function(input) {
       cli::cli_li("{.code /history} - View recent session history")
       cli::cli_li("{.code /sessions} - List available sessions to resume")
       cli::cli_li("{.code /resume <id>} - Resume a previous session")
-      cli::cli_li("{.code exit()} or {.kbd Ctrl+C} - Exit agentic session")
+      cli::cli_li("{.code exit()} or {.kbd Ctrl+C} twice - Exit agentic session")
     },
     "/skills" = agentic_skills(),
     "/sessions" = agentic_sessions(),
