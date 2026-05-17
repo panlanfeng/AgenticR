@@ -979,9 +979,7 @@ build_stable_context <- function() {
   paste0(
     "[Stable context]\n",
     "R version: ", R.version.string, "\n",
-    "Platform: ", R.version$platform, "\n",
-    "Start time: ", format(agenticr_env$session_start, "%Y-%m-%d %H:%M:%S"), "\n",
-    "Working directory at start: ", getwd(),
+    "Platform: ", R.version$platform,
     mem_note
   )
 }
