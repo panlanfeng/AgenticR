@@ -169,7 +169,7 @@ chat_completion_stream <- function(messages, tools = NULL,
         if (is.null(chunk)) next
 
         if (!is.null(chunk$usage)) {
-          usage <- chunk$usage
+          usage <<- chunk$usage
         }
 
         delta <- chunk$choices[[1]]$delta

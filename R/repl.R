@@ -525,8 +525,6 @@ process_with_agent <- function(user_input) {
     )))
   }
 
-  prefix_msg_count <- length(messages)
-
   if (length(agenticr_env$conversation) > 0) {
     messages <- c(messages, agenticr_env$conversation)
   }
@@ -610,13 +608,13 @@ process_with_agent <- function(user_input) {
       turn_tokens <- turn_tokens + as.integer(usage$total_tokens)
     }
 
-    # Compute cache hit from prefix vs total messages
-    # Tools are identical every turn — include in prefix as cache hits
-    prefix_msgs <- if (prefix_msg_count > 0) messages[1:min(prefix_msg_count, length(messages))] else list()
-    prefix_tokens <- estimate_tokens(prefix_msgs, tools)
-    total_msg_tokens <- estimate_tokens(messages, tools)
-    cache_hit <- if (total_msg_tokens > 0) max(0L, as.integer(prefix_tokens)) else 0L
-    cache_miss <- max(0L, as.integer(total_msg_tokens - prefix_tokens))
+    # Cache hit rate from API ground truth
+    cache_hit <- 0L
+    cache_miss <- 0L
+    if (!is.null(usage)) {
+      cache_hit <- as.integer(usage$prompt_cache_hit_tokens %||% 0L)
+      cache_miss <- as.integer(usage$prompt_cache_miss_tokens %||% 0L)
+    }
     cache_total <- cache_hit + cache_miss
     cache_pct <- if (cache_total > 0) round(cache_hit / cache_total * 100) else NA_integer_
 
