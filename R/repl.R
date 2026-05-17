@@ -44,6 +44,10 @@ agentic <- function(auto = TRUE, ...) {
   }
 
   on.exit({
+    n <- length(agenticr_env$conversation)
+    if (agenticr_env$saved_msg_count < n) {
+      save_turns_jsonl(agenticr_env$conversation, agenticr_env$saved_msg_count + 1L)
+    }
     agenticr_env$is_active <- FALSE
     agenticr_env$conversation <- list()
     mcp_disconnect_all()
@@ -220,6 +224,10 @@ agentic_resume <- function(session_id, ...) {
   }
 
   on.exit({
+    n <- length(agenticr_env$conversation)
+    if (agenticr_env$saved_msg_count < n) {
+      save_turns_jsonl(agenticr_env$conversation, agenticr_env$saved_msg_count + 1L)
+    }
     agenticr_env$is_active <- FALSE
     agenticr_env$conversation <- list()
     mcp_disconnect_all()
