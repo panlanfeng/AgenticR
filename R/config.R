@@ -8,91 +8,106 @@ PROVIDER_PRESETS <- list(
     name = "DeepSeek",
     api_base = "https://api.deepseek.com",
     api_model = "deepseek-v4-pro",
-    env_var = "DEEPSEEK_API_KEY"
+    env_var = "DEEPSEEK_API_KEY",
+    max_context_tokens = 1048576
   ),
   openai = list(
     name = "OpenAI",
     api_base = "https://api.openai.com/v1",
     api_model = "gpt-5.5",
-    env_var = "OPENAI_API_KEY"
+    env_var = "OPENAI_API_KEY",
+    max_context_tokens = 131072
   ),
   anthropic = list(
     name = "Anthropic",
     api_base = "https://api.anthropic.com/v1",
     api_model = "claude-opus-4-7",
-    env_var = "ANTHROPIC_API_KEY"
+    env_var = "ANTHROPIC_API_KEY",
+    max_context_tokens = 200000
   ),
   google = list(
     name = "Google Gemini",
     api_base = "https://generativelanguage.googleapis.com/v1beta/openai",
     api_model = "gemini-3.1-pro-preview",
-    env_var = "GOOGLE_API_KEY"
+    env_var = "GOOGLE_API_KEY",
+    max_context_tokens = 1048576
   ),
   glm = list(
     name = "Zhipu GLM",
     api_base = "https://open.bigmodel.cn/api/paas/v4",
     api_model = "glm-5.1",
-    env_var = "GLM_API_KEY"
+    env_var = "GLM_API_KEY",
+    max_context_tokens = 131072
   ),
   kimi = list(
     name = "Moonshot Kimi",
     api_base = "https://api.moonshot.cn/v1",
     api_model = "kimi-k2-thinking",
-    env_var = "KIMI_API_KEY"
+    env_var = "KIMI_API_KEY",
+    max_context_tokens = 131072
   ),
   minimax = list(
     name = "MiniMax",
     api_base = "https://api.minimax.chat/v1",
     api_model = "MiniMax-M2.7",
-    env_var = "MINIMAX_API_KEY"
+    env_var = "MINIMAX_API_KEY",
+    max_context_tokens = 1048576
   ),
   qwen = list(
     name = "Alibaba Qwen",
     api_base = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
     api_model = "qwen3.6-plus",
-    env_var = "QWEN_API_KEY"
+    env_var = "QWEN_API_KEY",
+    max_context_tokens = 131072
   ),
   xai = list(
     name = "xAI",
     api_base = "https://api.x.ai/v1",
     api_model = "grok-4.3",
-    env_var = "XAI_API_KEY"
+    env_var = "XAI_API_KEY",
+    max_context_tokens = 1048576
   ),
   openrouter = list(
     name = "OpenRouter",
     api_base = "https://openrouter.ai/api/v1",
     api_model = "openrouter/auto",
-    env_var = "OPENROUTER_API_KEY"
+    env_var = "OPENROUTER_API_KEY",
+    max_context_tokens = 131072
   ),
   siliconflow = list(
     name = "SiliconFlow",
     api_base = "https://api.siliconflow.cn/v1",
     api_model = "deepseek-ai/DeepSeek-V4-Flash",
-    env_var = "SILICONFLOW_API_KEY"
+    env_var = "SILICONFLOW_API_KEY",
+    max_context_tokens = 131072
   ),
   perplexity = list(
     name = "Perplexity",
     api_base = "https://api.perplexity.ai",
     api_model = "sonar-pro",
-    env_var = "PERPLEXITY_API_KEY"
+    env_var = "PERPLEXITY_API_KEY",
+    max_context_tokens = 131072
   ),
   mistral = list(
     name = "Mistral AI",
     api_base = "https://api.mistral.ai/v1",
     api_model = "mistral-large-2512",
-    env_var = "MISTRAL_API_KEY"
+    env_var = "MISTRAL_API_KEY",
+    max_context_tokens = 131072
   ),
   bedrock = list(
     name = "Amazon Bedrock",
     api_base = "https://bedrock-runtime.us-east-1.amazonaws.com",
     api_model = "anthropic.claude-opus-4-7-v1:0",
-    env_var = "AWS_ACCESS_KEY_ID"
+    env_var = "AWS_ACCESS_KEY_ID",
+    max_context_tokens = 200000
   ),
   custom = list(
     name = "Custom",
     api_base = "",
     api_model = "",
-    env_var = NA_character_
+    env_var = NA_character_,
+    max_context_tokens = 131072
   )
 )
 
@@ -157,6 +172,10 @@ agentic_config <- function(..., save = FALSE) {
       if (nchar(preset$api_model) > 0) {
         cfg$api_model <- preset$api_model
       }
+      if (!is.null(preset$max_context_tokens)) {
+        cfg$max_context_tokens <- preset$max_context_tokens
+        agenticr_env$max_context_tokens <- as.integer(preset$max_context_tokens)
+      }
       env_var <- preset$env_var
       if (!is.na(env_var)) {
         key <- Sys.getenv(env_var, unset = "")
@@ -168,7 +187,8 @@ agentic_config <- function(..., save = FALSE) {
     }
   }
 
-  for (name in c("api_key", "api_base", "api_model", "temperature", "max_tokens", "max_turn_tokens", "provider")) {
+  for (name in c("api_key", "api_base", "api_model", "temperature", "max_tokens",
+                  "max_turn_tokens", "max_context_tokens", "provider")) {
     if (!is.null(args[[name]])) {
       cfg[[name]] <- args[[name]]
     }
@@ -179,6 +199,9 @@ agentic_config <- function(..., save = FALSE) {
   }
 
   assign("config", cfg, envir = agenticr_env)
+  if (!is.null(cfg$max_context_tokens)) {
+    agenticr_env$max_context_tokens <- as.integer(cfg$max_context_tokens)
+  }
   invisible(cfg)
 }
 
@@ -269,7 +292,8 @@ load_config <- function() {
     provider = "deepseek",
     max_tokens = 4096,
     temperature = 0.1,
-    max_turn_tokens = 256000
+    max_turn_tokens = 64000,
+    max_context_tokens = 1048576
   )
 
   # 1. Config file overrides defaults
@@ -368,6 +392,7 @@ print.agenticr_config <- function(x, ...) {
   cli::cli_li("Temperature: {x$temperature}")
   cli::cli_li("Max tokens: {x$max_tokens}")
   cli::cli_li("Max turn tokens: {x$max_turn_tokens}")
+  cli::cli_li("Context window: {x$max_context_tokens}")
 }
 
 #' List available provider presets
