@@ -525,6 +525,8 @@ process_with_agent <- function(user_input) {
     )))
   }
 
+  prefix_msg_count <- length(messages)
+
   if (length(agenticr_env$conversation) > 0) {
     messages <- c(messages, agenticr_env$conversation)
   }
@@ -609,8 +611,9 @@ process_with_agent <- function(user_input) {
     }
 
     # Compute cache hit from prefix vs total messages
-    prefix_msgs <- messages[1:min(5L, length(messages))]
-    prefix_tokens <- estimate_tokens(prefix_msgs, NULL)
+    # Tools are identical every turn — include in prefix as cache hits
+    prefix_msgs <- if (prefix_msg_count > 0) messages[1:min(prefix_msg_count, length(messages))] else list()
+    prefix_tokens <- estimate_tokens(prefix_msgs, tools)
     total_msg_tokens <- estimate_tokens(messages, tools)
     cache_hit <- if (total_msg_tokens > 0) max(0L, as.integer(prefix_tokens)) else 0L
     cache_miss <- max(0L, as.integer(total_msg_tokens - prefix_tokens))
