@@ -34,7 +34,6 @@ agentic <- function(auto = TRUE, ...) {
   dir.create(agenticr_env$session_dir, showWarnings = FALSE, recursive = TRUE)
   agenticr_env$outputs_dir <- file.path(agenticr_env$session_dir, "outputs")
   dir.create(agenticr_env$outputs_dir, showWarnings = FALSE, recursive = TRUE)
-  agenticr_env$history_file <- file.path(agenticr_env$session_dir, "history.jsonl")
   agenticr_env$turns_file <- file.path(agenticr_env$session_dir, "turns.jsonl")
   agenticr_env$turn_counter <- 0L
   agenticr_env$saved_msg_count <- 0L
@@ -134,8 +133,6 @@ run_agentic_repl <- function() {
       }
     )
 
-    write_turn_history(input, result)
-
     utils::flush.console()
   }
 }
@@ -213,7 +210,6 @@ agentic_resume <- function(session_id, ...) {
   agenticr_env$session_id <- session_id
   agenticr_env$session_dir <- session_dir
   agenticr_env$outputs_dir <- file.path(session_dir, "outputs")
-  agenticr_env$history_file <- file.path(session_dir, "history.jsonl")
   agenticr_env$turns_file <- turns_file
   agenticr_env$turn_counter <- 0L
   agenticr_env$saved_msg_count <- length(agenticr_env$conversation)
@@ -826,59 +822,48 @@ write_turn_history <- function(user_input, result) {
 }
 
 #' Show current todo list
-#'
-#' @keywords internal
-show_todos <- function() {
-  if (length(agenticr_env$todos) == 0 || nrow(agenticr_env$todos) == 0) {
-    cli::cli_alert_info("No active todo list.")
-    return(invisible())
-  }
-  cli::cli_h2("Todo List")
-  for (i in seq_len(nrow(agenticr_env$todos))) {
-    item <- agenticr_env$todos[i, ]
-    mark <- switch(item$status,
-      completed = cli::col_green("[x]"),
-      in_progress = cli::col_yellow("[>]"),
-      cancelled = cli::col_red("[-]"),
-      cli::col_silver("[ ]"))
-    cli::cli_li("{mark} {item$content} ({item$priority})")
-  }
-  pending <- sum(agenticr_env$todos$status %in% c("pending", "in_progress"))
-  if (pending == 0) {
-    cli::cli_alert_success("All tasks complete!")
-  }
-  invisible()
-}
 
-#' Show recent session history
+#' Show recent conversation history from turns.jsonl
 #'
 #' @keywords internal
 show_history <- function() {
-  if (is.null(agenticr_env$history_file) || !file.exists(agenticr_env$history_file)) {
-    cli::cli_alert_info("No history yet. Start a conversation first.")
+  if (is.null(agenticr_env$turns_file) || !file.exists(agenticr_env$turns_file)) {
+    cli::cli_alert_info("No conversation history yet.")
     return(invisible())
   }
   lines <- tryCatch(
-    readLines(agenticr_env$history_file, warn = FALSE),
+    readLines(agenticr_env$turns_file, warn = FALSE),
     error = function(e) character(0)
   )
   if (length(lines) == 0) {
-    cli::cli_alert_info("History is empty.")
+    cli::cli_alert_info("Conversation history is empty.")
     return(invisible())
   }
-  cli::cli_h2("Session History")
-  recent <- tail(lines, 10)
-  for (line in recent) {
-    entry <- tryCatch(
+
+  msgs <- list()
+  for (line in lines) {
+    m <- tryCatch(
       jsonlite::fromJSON(line, simplifyVector = FALSE),
       error = function(e) NULL
     )
-    if (is.null(entry)) next
-    inp <- entry$input %||% ""
-    if (nchar(inp) > 80) inp <- paste0(substr(inp, 1, 80), "...")
-    cli::cli_li("#{entry$turn} {.val {inp}}")
+    if (is.null(m)) next
+    if (m$role == "user" && !grepl("^\\[|^<system_|^\\[R code executed\\]", m$content %||% "")) {
+      msgs <- c(msgs, list(m))
+    }
   }
-  cli::cli_text("Full history: {.file {agenticr_env$history_file}}")
+  if (length(msgs) == 0) {
+    cli::cli_alert_info("No user messages found.")
+    return(invisible())
+  }
+
+  cli::cli_h2("Session History")
+  recent <- tail(msgs, 10)
+  for (i in seq_along(recent)) {
+    inp <- recent[[i]]$content %||% ""
+    if (nchar(inp) > 80) inp <- paste0(substr(inp, 1, 80), "...")
+    cli::cli_li("{.val {inp}}")
+  }
+  cli::cli_text("Full conversation: {.file {agenticr_env$turns_file}}")
   invisible()
 }
 
