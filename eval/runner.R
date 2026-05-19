@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
-# AgenticR Evaluation Runner
-# Feeds NL descriptions to agenticR and captures generated code + output
+# AgenticR Evaluation Runner — multi-turn with setup context
+# Injects setup code as conversation history, then sends NL query
 
 suppressPackageStartupMessages({
   library(agenticr)
@@ -17,24 +17,23 @@ dir.create(RESULTS_DIR, showWarnings = FALSE)
 results_file <- file.path(RESULTS_DIR,
   paste0("results_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".jsonl"))
 
-cat("AgenticR Evaluation Runner\n")
-cat("==========================\n")
+cat("AgenticR Evaluation Runner (multi-turn with context)\n")
+cat("====================================================\n")
 
-# Read an example file, return list(nl, expected_code)
 read_benchmark <- function(filepath) {
   lines <- readLines(filepath, warn = FALSE)
-  lines <- trimws(lines)
+  setup_line <- grep("^# SETUP:", lines, value = TRUE)[1]
   nl_line <- grep("^# NL:", lines, value = TRUE)[1]
-  if (is.na(nl_line)) stop("No NL description found in ", filepath)
+  if (is.na(nl_line)) stop("No NL description in ", filepath)
+  setup <- if (!is.na(setup_line)) trimws(sub("^# SETUP:\\s*", "", setup_line)) else ""
   nl <- sub("^# NL:\\s*", "", nl_line)
-  code_lines <- grep("^# NL:", lines, invert = TRUE, value = TRUE)
-  code_lines <- code_lines[nchar(code_lines) > 0]
-  list(nl = nl, expected = paste(code_lines, collapse = "\n"))
+  code_lines <- grep("^# (SETUP|NL):", lines, invert = TRUE, value = TRUE)
+  code_lines <- code_lines[nchar(trimws(code_lines)) > 0]
+  list(setup = setup, nl = nl, expected = paste(code_lines, collapse = "\n"))
 }
 
-# Run agenticR in a fresh session, return generated code
-run_in_session <- function(nl_desc) {
-  callr::r(function(nl) {
+run_in_session <- function(setup_code, nl_desc) {
+  callr::r(function(setup, nl) {
     suppressPackageStartupMessages(library(agenticr))
     cfg <- agenticr:::load_config()
     if (cfg$api_key == "") stop("No API key configured")
@@ -43,16 +42,25 @@ run_in_session <- function(nl_desc) {
     agenticr_env$ask_permission <- function(p) FALSE
 
     process_with_agent <- get("process_with_agent", envir = asNamespace("agenticr"))
+
+    # Inject setup as conversation context: execute it + add to conversation
+    if (nchar(trimws(setup)) > 0) {
+      # Execute setup silently
+      tryCatch(eval(parse(text = setup), envir = .GlobalEnv), error = function(e) NULL)
+      agenticr_env$conversation <- c(agenticr_env$conversation, list(list(
+        role = "user", content = paste0("[R code executed]\n", setup)
+      )))
+    }
+
     process_with_agent(nl)
 
     conv <- agenticr_env$conversation
-    # Extract R code from tool calls
     codes <- character(0)
     for (msg in conv) {
       if (!is.null(msg$tool_calls)) {
         for (tc in msg$tool_calls) {
           args <- tryCatch(
-            jsonlite::fromJSON(tc$`function`$arguments, simplifyVector = FALSE),
+            jsonlite::fromJSON(tc[["function"]]$arguments, simplifyVector = FALSE),
             error = function(e) list()
           )
           if (!is.null(args$code)) codes <- c(codes, args$code)
@@ -60,7 +68,7 @@ run_in_session <- function(nl_desc) {
       }
     }
     list(codes = codes)
-  }, args = list(nl_desc))
+  }, args = list(setup_code, nl_desc))
 }
 
 total <- 0
@@ -78,19 +86,18 @@ for (cat in CATEGORIES) {
     cat(sprintf("  %-8s ", name))
 
     result <- list(
-      category = cat,
-      file = name,
-      nl = bm$nl,
+      category = cat, file = name,
+      setup = bm$setup, nl = bm$nl,
       expected_code = bm$expected,
       timestamp = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
     )
 
     tryCatch({
-      session_result <- run_in_session(bm$nl)
+      session_result <- run_in_session(bm$setup, bm$nl)
       result$generated_code <- paste(session_result$codes, collapse = "\n")
       result$error <- NULL
       completed <- completed + 1
-      cat(sprintf("OK (%d chars code)\n", nchar(result$generated_code)))
+      cat(sprintf("OK (%d chars)\n", nchar(result$generated_code)))
     }, error = function(e) {
       result$generated_code <- ""
       result$error <- conditionMessage(e)
