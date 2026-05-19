@@ -580,7 +580,7 @@ process_with_agent <- function(user_input) {
 
     agenticr_env$total_session_tokens <- estimate_tokens(messages, tools)
     since_last <- token_count - agenticr_env$last_memory_extract_tokens
-    if (since_last > 50000) {
+    if (since_last > 10000) {
       extract_memory(messages)
     }
 
@@ -931,7 +931,10 @@ SYSTEM_PROMPT <- paste0(
   "NEVER use help(), ?, or help.search() directly in execute_r_code — ",
   "they open interactive pagers that block the session.\n",
   "- When user asks to find functions by topic, use your own knowledge ",
-  "of base R and common packages. Do not use help.search()."
+  "of base R and common packages. Do not use help.search().\n",
+  "- In-session patterns take priority over stored memory. If the user ",
+  "is consistently using a certain style in this session, follow that ",
+  "style even if the memory file suggests otherwise.\n"
 )
 
 #' Load AGENTS.md from global and project directories

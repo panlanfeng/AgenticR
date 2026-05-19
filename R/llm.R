@@ -394,23 +394,29 @@ extract_memory <- function(messages) {
   }
 
   memory_prompt <- paste0(
-    "Extract the user's preferences and style from this conversation. ",
-    "Write in Markdown. Focus only on what the user consistently prefers — ",
-    "do NOT include project details, file paths, or session-specific learnings.\n\n",
-    "## User Preferences\n",
-    "- How does the user like to work? What kind of answers do they prefer?\n",
-    "- What packages, syntax, or approaches do they consistently use or prefer?\n",
-    "  (e.g. dplyr over data.table, base R over tidyverse, ggplot2 over lattice)\n",
-    "- How do they communicate — concise or detailed? Casual or formal?\n",
-    "- What is their apparent skill level and domain?\n",
-    "- For each preference, explain WHY the user likely prefers it ",
-    "(inferred from their choices, corrections, or explicit statements).\n",
-    "  Do not just list what they did — explain the underlying preference.\n\n",
+    "Extract persistent information from this conversation. ",
+    "Write in Markdown with these sections:\n\n",
+    "## User Profile\n",
+    "- Knowledge level, job role, preferred collaboration style\n",
+    "- How they like to receive information (concise? detailed?) and WHY\n",
+    "- What packages, syntax, or approaches they consistently prefer ",
+    "(e.g. dplyr over data.table, base R over tidyverse) and WHY\n\n",
+    "## Reflection & Learnings\n",
+    "- What worked well and WHY it worked\n",
+    "- Which approaches caused errors and the root cause\n",
+    "- Underlying principles learned, not just surface fixes\n\n",
+    "## Environment Learnings\n",
+    "- R packages that work well (or known incompatibilities)\n",
+    "- Commands or functions that caused issues and WHY they failed\n\n",
+    "## Feedback & Corrections\n",
+    "- When the user corrected you, what was the mistake\n",
+    "- WHY the correct approach is correct — the underlying principle\n\n",
     "RULES:\n",
-    "- Only general, stable preferences. No one-time requests or temporary needs.\n",
+    "- Only general, stable patterns. No one-time requests or temporary needs.\n",
     "- NEVER include file paths, project names, or session-specific details.\n",
-    "- If existing memory exists, MERGE — do not duplicate. Update outdated preferences.\n",
-    "- Keep under 300 words total.\n\n"
+    "- MERGE with existing memory — do not duplicate. Update outdated info.\n",
+    "- For every preference or learning, explain WHY, not just WHAT.\n",
+    "- Keep under 400 words total.\n\n"
   )
   if (nchar(existing) > 0) {
     memory_prompt <- paste0(
