@@ -18,13 +18,16 @@ entries <- lapply(lines, fromJSON, simplifyVector = FALSE)
 
 # ---- Evaluation helpers ----
 
-eval_env <- new.env(parent = globalenv())
-suppressMessages({
-  library(dplyr); library(ggplot2)
-  data(mtcars, iris, economics, mpg, envir = eval_env)
-})
+make_eval_env <- function() {
+  env <- new.env(parent = globalenv())
+  suppressMessages({
+    library(dplyr); library(ggplot2)
+    data(mtcars, iris, economics, mpg, envir = env)
+  })
+  env
+}
 
-eval_output <- function(expected_code, generated_code, category) {
+eval_output <- function(expected_code, generated_code, category, eval_env) {
   exp_val <- tryCatch(eval(parse(text = expected_code), envir = eval_env), error = function(e) NULL)
   gen_val <- tryCatch(eval(parse(text = generated_code), envir = eval_env), error = function(e) NULL)
   if (is.null(exp_val) || is.null(gen_val)) return(0)
@@ -81,6 +84,7 @@ for (e in entries) {
   expected <- e$expected_code
   generated <- e$generated_code %||% ""
   cat <- e$category
+  eval_env <- make_eval_env()
 
   # 1. Execution
   exec <- 0
@@ -94,7 +98,7 @@ for (e in entries) {
   # 2. Output — functional comparison
   output <- 0
   if (exec == 1 && nchar(expected) > 0) {
-    output <- eval_output(expected, generated, cat)
+    output <- eval_output(expected, generated, cat, eval_env)
   }
   cat(sprintf("output=%.1f ", output))
 
