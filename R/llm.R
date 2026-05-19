@@ -394,32 +394,23 @@ extract_memory <- function(messages) {
   }
 
   memory_prompt <- paste0(
-    "Extract information for a persistent memory file. Write in Markdown ",
-    "with these sections:\n\n",
-    "## User Profile\n",
-    "- Knowledge level, job role, preferred collaboration style\n",
-    "- How they like to receive information (concise? detailed?)\n\n",
-    "## Reflection & Learnings\n",
-    "- What did you learn from this session?\n",
-    "- Which approaches worked well?\n",
-    "- Which commands or patterns caused errors and their root cause?\n\n",
-    "## Environment Learnings\n",
-    "- R packages that work (known incompatibilities)\n",
-    "- Commands or package functions that caused issues\n\n",
-    "## Feedback & Corrections\n",
-    "- When the user corrected you, what was the mistake and the fix\n",
-    "- WHY the fix is correct -- the underlying principle\n\n",
-    "## Project Context\n",
-    "- Current project topic, purpose, and goals\n",
-    "- Key decisions the user made and WHY\n\n",
-    "## Important Files\n",
-    "- Only describe what each file CONTAINS and its ROLE, never its path or name\n\n",
+    "Extract the user's preferences and style from this conversation. ",
+    "Write in Markdown. Focus only on what the user consistently prefers — ",
+    "do NOT include project details, file paths, or session-specific learnings.\n\n",
+    "## User Preferences\n",
+    "- How does the user like to work? What kind of answers do they prefer?\n",
+    "- What packages, syntax, or approaches do they consistently use or prefer?\n",
+    "  (e.g. dplyr over data.table, base R over tidyverse, ggplot2 over lattice)\n",
+    "- How do they communicate — concise or detailed? Casual or formal?\n",
+    "- What is their apparent skill level and domain?\n",
+    "- For each preference, explain WHY the user likely prefers it ",
+    "(inferred from their choices, corrections, or explicit statements).\n",
+    "  Do not just list what they did — explain the underlying preference.\n\n",
     "RULES:\n",
-    "- NEVER include file paths, coding style, git history\n",
-    "- NEVER repeat information that can be found by searching the repo\n",
-    "- Focus on WHY (intent, reasoning) not WHAT (commands, syntax)\n",
-    "- If existing memory exists, MERGE new info -- do not duplicate\n",
-    "- Keep under 600 words total\n\n"
+    "- Only general, stable preferences. No one-time requests or temporary needs.\n",
+    "- NEVER include file paths, project names, or session-specific details.\n",
+    "- If existing memory exists, MERGE — do not duplicate. Update outdated preferences.\n",
+    "- Keep under 300 words total.\n\n"
   )
   if (nchar(existing) > 0) {
     memory_prompt <- paste0(

@@ -974,7 +974,7 @@ build_stable_context <- function() {
   if (file.exists(agenticr_env$memory_file)) {
     mem_note <- paste0(
       "\nMemory: use read_file to load ", agenticr_env$memory_file,
-      " -- contains user profile, environment learnings, past corrections"
+      " -- contains user preferences and working style"
     )
   }
   paste0(
