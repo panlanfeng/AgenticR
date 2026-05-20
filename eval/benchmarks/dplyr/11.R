@@ -1,3 +1,4 @@
+# EXPECTED_FORM: table
 # SETUP: library(dplyr)
 # NL: count how many cars in mtcars have each number of cylinders
 count(mtcars, cyl)

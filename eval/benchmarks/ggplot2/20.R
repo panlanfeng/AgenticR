@@ -1,3 +1,4 @@
+# EXPECTED_FORM: plot
 # SETUP: library(ggplot2); library(dplyr)
 # NL: using mtcars with cyl as a factor, compute the mean and standard deviation of mpg for each cylinder count, then plot the means as points with error bars for the standard deviation
 library(ggplot2)

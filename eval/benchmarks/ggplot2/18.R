@@ -1,3 +1,4 @@
+# EXPECTED_FORM: plot
 # SETUP: library(ggplot2)
 # NL: using mtcars, make a scatter plot of mpg vs wt with points colored by the number of cylinders, and set the point size to 3
 library(ggplot2)

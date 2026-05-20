@@ -23,13 +23,15 @@ cat("====================================================\n")
 read_benchmark <- function(filepath) {
   lines <- readLines(filepath, warn = FALSE)
   setup_line <- grep("^# SETUP:", lines, value = TRUE)[1]
+  expected_form_line <- grep("^# EXPECTED_FORM:", lines, value = TRUE)[1]
   nl_line <- grep("^# NL:", lines, value = TRUE)[1]
   if (is.na(nl_line)) stop("No NL description in ", filepath)
   setup <- if (!is.na(setup_line)) trimws(sub("^# SETUP:\\s*", "", setup_line)) else ""
+  expected_form <- if (!is.na(expected_form_line)) trimws(sub("^# EXPECTED_FORM:\\s*", "", expected_form_line)) else ""
   nl <- sub("^# NL:\\s*", "", nl_line)
-  code_lines <- grep("^# (SETUP|NL):", lines, invert = TRUE, value = TRUE)
+  code_lines <- grep("^# (SETUP|EXPECTED_FORM|NL):", lines, invert = TRUE, value = TRUE)
   code_lines <- code_lines[nchar(trimws(code_lines)) > 0]
-  list(setup = setup, nl = nl, expected = paste(code_lines, collapse = "\n"))
+  list(setup = setup, nl = nl, expected = paste(code_lines, collapse = "\n"), expected_form = expected_form)
 }
 
 run_in_session <- function(setup_code, nl_desc) {
@@ -85,15 +87,17 @@ for (cat in CATEGORIES) {
     name <- basename(f)
     cat(sprintf("  %-8s ", name))
 
+    nl_with_hint <- bm$nl
+
     result <- list(
       category = cat, file = name,
-      setup = bm$setup, nl = bm$nl,
+      setup = bm$setup, nl = bm$nl, expected_form = bm$expected_form,
       expected_code = bm$expected,
       timestamp = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
     )
 
     tryCatch({
-      session_result <- run_in_session(bm$setup, bm$nl)
+      session_result <- run_in_session(bm$setup, nl_with_hint)
       result$generated_code <- paste(session_result$codes, collapse = "\n")
       result$error <- NULL
       completed <- completed + 1

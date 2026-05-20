@@ -1,3 +1,4 @@
+# EXPECTED_FORM: plot
 # SETUP: library(ggplot2)
 # NL: using mtcars, make a scatter plot of mpg vs wt and add the title "Fuel Efficiency vs Weight" and rename the x-axis label to "Miles Per Gallon"
 library(ggplot2)

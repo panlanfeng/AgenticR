@@ -1,3 +1,4 @@
+# EXPECTED_FORM: plot
 # SETUP: library(ggplot2)
 # NL: using mtcars, make a bar chart showing the count of cars for each number of cylinders
 library(ggplot2)

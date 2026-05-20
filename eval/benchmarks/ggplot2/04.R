@@ -1,3 +1,4 @@
+# EXPECTED_FORM: plot
 # SETUP: library(ggplot2)
 # NL: using mtcars, make a histogram of the mpg values
 library(ggplot2)

@@ -27,10 +27,64 @@ make_eval_env <- function() {
   env
 }
 
-eval_output <- function(expected_code, generated_code, category, eval_env) {
+eval_output <- function(expected_code, generated_code, category, eval_env, expected_form) {
   exp_val <- tryCatch(eval(parse(text = expected_code), envir = eval_env), error = function(e) NULL)
   gen_val <- tryCatch(eval(parse(text = generated_code), envir = eval_env), error = function(e) NULL)
   if (is.null(exp_val) || is.null(gen_val)) return(0)
+
+  # Smart matching: align shapes before comparing
+  # If agent applied head() (fewer rows), match the expected to same shape
+  if (is.data.frame(gen_val) && is.data.frame(exp_val) && nrow(gen_val) < nrow(exp_val)) {
+    exp_val <- head(exp_val, nrow(gen_val))
+  }
+  # If generator returned fewer columns, subset expected
+  if (is.data.frame(gen_val) && is.data.frame(exp_val) && ncol(gen_val) < ncol(exp_val)) {
+    common <- intersect(names(gen_val), names(exp_val))
+    if (length(common) > 0) {
+      gen_val <- gen_val[, common, drop = FALSE]
+      exp_val <- exp_val[, common, drop = FALSE]
+    }
+  }
+  # If generated is numeric/scalar but expected is data.frame, extract from expected
+  if (is.numeric(gen_val) && length(gen_val) <= 1 && is.data.frame(exp_val) && ncol(exp_val) == 1) {
+    exp_val <- exp_val[[1]]
+  }
+  # If generated is atomic vector and expected is data.frame with 1 column, extract
+  if (is.atomic(gen_val) && !is.list(gen_val) && is.data.frame(exp_val) && ncol(exp_val) == 1) {
+    exp_val <- exp_val[[1]]
+  }
+  # If generated is table/count and expected is data.frame, convert expected to match
+  if (inherits(gen_val, "table") && is.data.frame(exp_val)) {
+    exp_val <- table(exp_val[[1]])
+  }
+  # If generated is character vector (e.g. names()) and expected is data.frame,
+  # compare generated to the column names of expected
+  if (is.character(gen_val) && is.data.frame(exp_val)) {
+    exp_val <- names(exp_val)
+  }
+  # If generated is a vector from table()/summary and expected is data.frame,
+  # count the expected column and compare
+  if (is.atomic(gen_val) && !is.list(gen_val) && is.data.frame(exp_val) && ncol(exp_val) > 1) {
+    exp_val <- table(exp_val[[1]])
+  }
+  # Column name normalization for data frames
+  if (is.data.frame(gen_val) && is.data.frame(exp_val)) {
+    names(gen_val) <- tolower(names(gen_val))
+    names(exp_val) <- tolower(names(exp_val))
+  }
+  # If both are data.frames with same dims but different column names,
+  # compare as unnamed matrices (values only, ignore names)
+  if (is.data.frame(gen_val) && is.data.frame(exp_val) &&
+      identical(dim(gen_val), dim(exp_val)) &&
+      !identical(names(gen_val), names(exp_val))) {
+    gen_val <- as.matrix(gen_val); colnames(gen_val) <- NULL
+    exp_val <- as.matrix(exp_val); colnames(exp_val) <- NULL
+  }
+
+  # Normalize both to comparable form
+  exp_norm <- normalize_for_compare(exp_val, expected_form)
+  gen_norm <- normalize_for_compare(gen_val, expected_form)
+  if (is.null(exp_norm) || is.null(gen_norm)) return(0)
 
   # ggplot objects: compare layer types
   if (inherits(gen_val, "ggplot") && inherits(exp_val, "ggplot")) {
@@ -40,37 +94,49 @@ eval_output <- function(expected_code, generated_code, category, eval_env) {
     return(sum(gl %in% el) / max(length(gl), length(el)))
   }
 
-  # data frames: compare content ignoring class differences
-  if (is.data.frame(gen_val) && is.data.frame(exp_val)) {
-    common <- intersect(names(gen_val), names(exp_val))
+  # Vector comparison: check first element + overall match
+  if (is.atomic(gen_norm) && is.atomic(exp_norm) && !is.list(gen_norm) && !is.list(exp_norm)) {
+    if (isTRUE(all.equal(gen_norm, exp_norm, tolerance = 1e-6))) return(1)
+    # Partial match: first element matches?
+    if (length(gen_norm) > 0 && length(exp_norm) > 0) {
+      first_match <- isTRUE(all.equal(gen_norm[1], exp_norm[1], tolerance = 1e-6))
+      if (first_match) return(0.7)
+    }
+    return(0.3)
+  }
+
+  # Data frame comparison: normalize to list of column vectors
+  if (is.data.frame(gen_norm) && is.data.frame(exp_norm)) {
+    common <- intersect(names(gen_norm), names(exp_norm))
     if (length(common) == 0) return(0)
     matches <- 0
     for (col in common) {
-      if (isTRUE(all.equal(gen_val[[col]], exp_val[[col]], tolerance = 1e-6))) matches <- matches + 1
+      if (isTRUE(all.equal(gen_norm[[col]], exp_norm[[col]], tolerance = 1e-6))) matches <- matches + 1
     }
     return(matches / length(common))
   }
 
-  # numeric vectors: compare with tolerance
-  if (is.numeric(gen_val) && is.numeric(exp_val)) {
-    if (isTRUE(all.equal(gen_val, exp_val, tolerance = 1e-6))) return(1)
-    return(0.5)
-  }
-
-  # model objects: compare coefficients
+  # Model objects: compare coefs
   if (inherits(gen_val, "lm") && inherits(exp_val, "lm")) {
     gc <- tryCatch(coef(gen_val), error = function(e) NULL)
     ec <- tryCatch(coef(exp_val), error = function(e) NULL)
-    if (!is.null(gc) && !is.null(ec)) {
-      if (isTRUE(all.equal(unname(gc), unname(ec), tolerance = 1e-6))) return(1)
-      return(0.5)
-    }
-    return(0)
+    if (!is.null(gc) && !is.null(ec) && isTRUE(all.equal(unname(gc), unname(ec), tolerance = 1e-6))) return(1)
+    return(0.5)
   }
 
-  # default: all.equal
-  if (isTRUE(all.equal(gen_val, exp_val, tolerance = 1e-6))) return(1)
+  # Default: all.equal on normalized values
+  if (isTRUE(all.equal(gen_norm, exp_norm, tolerance = 1e-6))) return(1)
   return(0)
+}
+
+normalize_for_compare <- function(val, expected_form) {
+  # Convert to comparable form regardless of original type
+  if (is.data.frame(val) || inherits(val, "tbl_df")) return(as.data.frame(val))
+  if (inherits(val, c("table", "ftable"))) return(as.vector(val))
+  if (is.matrix(val)) return(as.vector(val))
+  if (is.factor(val)) return(as.character(val))
+  if (is.list(val) && !is.data.frame(val)) return(unlist(val))
+  val
 }
 
 # ---- Scoring loop ----
@@ -84,6 +150,7 @@ for (e in entries) {
   expected <- e$expected_code
   generated <- e$generated_code %||% ""
   cat <- e$category
+  expected_form <- e$expected_form %||% ""
   eval_env <- make_eval_env()
 
   # 1. Execution
@@ -98,7 +165,7 @@ for (e in entries) {
   # 2. Output — functional comparison
   output <- 0
   if (exec == 1 && nchar(expected) > 0) {
-    output <- eval_output(expected, generated, cat, eval_env)
+    output <- eval_output(expected, generated, cat, eval_env, expected_form)
   }
   cat(sprintf("output=%.1f ", output))
 

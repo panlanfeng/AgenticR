@@ -1,3 +1,4 @@
+# EXPECTED_FORM: plot
 # SETUP: library(ggplot2)
 # NL: using mtcars, make a scatter plot of mpg on the x-axis and wt on the y-axis
 library(ggplot2)
