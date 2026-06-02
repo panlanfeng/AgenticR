@@ -103,7 +103,20 @@ tool_load_skill_body <- function(name) {
   if (nchar(s$body) == 0) {
     return(paste0("Skill '", name, "' has no body content."))
   }
-  paste0("[Skill: ", s$name, "]\n", s$body, "\n[/Skill: ", s$name, "]")
+  result <- paste0("[Skill: ", s$name, "]\n", s$body, "\n[/Skill: ", s$name, "]")
+
+  skill_dir <- file.path(Sys.getenv("HOME", unset = "~"), ".agenticr", "skills", name)
+  mem_file <- file.path(skill_dir, "MEMORY.md")
+  if (file.exists(mem_file)) {
+    mem_content <- tryCatch(
+      paste(readLines(mem_file, warn = FALSE), collapse = "\n"),
+      error = function(e) ""
+    )
+    if (nchar(trimws(mem_content)) > 0) {
+      result <- paste0(result, "\n\n[Skill memory for: ", s$name, "]\n", mem_content)
+    }
+  }
+  result
 }
 
 #' Install a skill from a URL

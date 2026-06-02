@@ -377,6 +377,63 @@ get_tool_definitions <- function() {
           required = list("section", "content")
         )
       )
+    ),
+    list(
+      type = "function",
+      "function" = list(
+        name = "create_skill",
+        description = paste0(
+          "Create a new reusable skill. Use this when the user asks you to remember a pattern, ",
+          "or when you notice a recurring workflow that should become a skill. ",
+          "Creates SKILL.md with YAML frontmatter and instructions."
+        ),
+        parameters = list(
+          type = "object",
+          properties = list(
+            name = list(
+              type = "string",
+              description = "Skill name (lowercase, hyphens allowed, e.g. 'r-style')"
+            ),
+            description = list(
+              type = "string",
+              description = "One-line description of what this skill does"
+            ),
+            trigger = list(
+              type = "string",
+              description = "When to apply this skill (e.g. 'when generating R code' or 'when user asks for plots')"
+            ),
+            body = list(
+              type = "string",
+              description = "Full skill instructions in Markdown. Include examples, rules, and best practices."
+            )
+          ),
+          required = list("name", "description", "body")
+        )
+      )
+    ),
+    list(
+      type = "function",
+      "function" = list(
+        name = "append_skill_memory",
+        description = paste0(
+          "Append experience notes to a skill's memory. Use this when you learn something ",
+          "new about how a skill works, what inputs it handles well, or known failure modes."
+        ),
+        parameters = list(
+          type = "object",
+          properties = list(
+            name = list(
+              type = "string",
+              description = "Name of the skill to append memory to"
+            ),
+            content = list(
+              type = "string",
+              description = "Experience note to append (Markdown, include date and context)"
+            )
+          ),
+          required = list("name", "content")
+        )
+      )
     )
   )
 }
@@ -442,6 +499,8 @@ execute_tool <- function(tool_name, arguments) {
     todo_write = tool_todo_write(arguments$todos),
     load_skill_body = tool_load_skill_body(arguments$name),
     memory_write = tool_memory_write(arguments$section, arguments$content),
+    create_skill = tool_create_skill(arguments$name, arguments$description, arguments$trigger, arguments$body),
+    append_skill_memory = tool_append_skill_memory(arguments$name, arguments$content),
     {
       if (startsWith(tool_name, "mcp_")) {
         mcp_execute_tool(tool_name, arguments)
@@ -1221,4 +1280,52 @@ tool_memory_write <- function(section, content) {
   }
 
   paste0("Memory written to ", section, ".md.")
+}
+
+#' Create a new skill with YAML frontmatter
+#'
+#' @keywords internal
+tool_create_skill <- function(name, description, trigger = NULL, body) {
+  if (is.null(name) || is.null(description) || is.null(body)) {
+    return("Error: name, description, and body are required")
+  }
+  name <- tolower(gsub("[^a-z0-9-]", "-", name))
+  skill_dir <- file.path(Sys.getenv("HOME", unset = "~"), ".agenticr", "skills", name)
+  if (dir.exists(skill_dir)) {
+    return(paste0("Skill '", name, "' already exists. Use update_skill_body to modify it."))
+  }
+  dir.create(skill_dir, showWarnings = FALSE, recursive = TRUE)
+
+  trigger_line <- if (!is.null(trigger) && nchar(trimws(trigger)) > 0) {
+    paste0("trigger: ", trigger, "\n")
+  } else ""
+
+  frontmatter <- paste0(
+    "---\n",
+    "description: ", description, "\n",
+    trigger_line,
+    "---\n\n",
+    body
+  )
+  writeLines(frontmatter, file.path(skill_dir, "SKILL.md"))
+  writeLines("# Skill Memory\n", file.path(skill_dir, "MEMORY.md"))
+
+  paste0("Skill '", name, "' created. It will be available on the next turn as [Available skill: ", name, "].")
+}
+
+#' Append experience notes to a skill's MEMORY.md
+#'
+#' @keywords internal
+tool_append_skill_memory <- function(name, content) {
+  if (is.null(name) || is.null(content) || nchar(trimws(content)) == 0) {
+    return("Error: name and non-empty content are required")
+  }
+  skill_dir <- file.path(Sys.getenv("HOME", unset = "~"), ".agenticr", "skills", name)
+  if (!dir.exists(skill_dir)) {
+    return(paste0("Skill '", name, "' not found. Create it first with create_skill."))
+  }
+  memory_file <- file.path(skill_dir, "MEMORY.md")
+  timestamp <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+  cat(sprintf("\n## %s\n%s\n", timestamp, content), file = memory_file, append = TRUE)
+  paste0("Memory appended to skill '", name, "'.")
 }
