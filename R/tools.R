@@ -92,7 +92,7 @@ get_tool_definitions <- function() {
             ),
             limit = list(
               type = "integer",
-              description = "Maximum lines to return (default: 2000)"
+              description = "Maximum lines to read (default: 2000, max: 2000)"
             )
           ),
           required = list("file_path")
@@ -619,39 +619,76 @@ tool_read_file <- function(file_path, offset = NULL, limit = NULL) {
   if (!is.character(content)) return(content)
 
   total_lines <- length(content)
-
-  # Apply offset (1-indexed)
   start_line <- if (is.null(offset) || is.na(offset)) 1L else max(1L, as.integer(offset))
   MAX_LINES <- 2000L
   limit_val <- if (!is.null(limit) && !is.na(limit)) min(as.integer(limit), MAX_LINES) else MAX_LINES
   end_line <- min(start_line + limit_val - 1L, total_lines)
 
-  # Truncation note
+  resolved <- normalizePath(file_path, mustWork = FALSE)
+  agenticr_env$files_read[[resolved]] <- TRUE
+
+  # For large files read without explicit offset, show head + tail
+  if (is.null(offset) && total_lines > limit_val + 200) {
+    HEAD_LINES <- 80L
+    TAIL_LINES <- 40L
+    head_content <- content[1:min(HEAD_LINES, total_lines)]
+    tail_start <- max(HEAD_LINES + 1, total_lines - TAIL_LINES + 1)
+    tail_content <- content[tail_start:total_lines]
+    shown_lines <- HEAD_LINES + TAIL_LINES
+
+    head_block <- format_lines(head_content, 1)
+    tail_block <- format_lines(tail_content, tail_start)
+    body <- c(
+      paste0("[File: ", resolved, "]"),
+      paste0("[Size: ", format(fsize, big.mark = ","), " bytes]"),
+      paste0("[Lines: ", total_lines, " total]"),
+      paste0("[Range: 1-", HEAD_LINES, " and ", tail_start, "-", total_lines,
+             " (", shown_lines, " of ", total_lines, " lines shown)]"),
+      paste0("[Next: use offset=", HEAD_LINES + 1, " to continue reading]"),
+      "",
+      head_block,
+      paste0("  --- ", total_lines - HEAD_LINES - TAIL_LINES, " lines not shown ---"),
+      tail_block
+    )
+    return(paste(body, collapse = "\n"))
+  }
+
+  shown_content <- content[start_line:end_line]
+  shown_lines <- length(shown_content)
   truncated <- end_line < total_lines
-  content <- content[start_line:end_line]
 
-  lines <- content
-  if (truncated) {
-    lines <- c(lines, sprintf("... [%d more lines after line %d. Use offset=%d to read next section]",
-                              total_lines - end_line, end_line, end_line + 1))
-  }
-  if (start_line > 1) {
-    lines <- c(sprintf("[Starting at line %d of %d total]", start_line, total_lines), lines)
-  }
+  body <- c(
+    paste0("[File: ", resolved, "]"),
+    paste0("[Size: ", format(fsize, big.mark = ","), " bytes]"),
+    paste0("[Lines: ", total_lines, " total]"),
+    paste0("[Range: ", start_line, "-", end_line,
+           " (", shown_lines, if (truncated) paste0(" of ", total_lines) else "", " lines)]"),
+    if (truncated) paste0("[Next: use offset=", end_line + 1, " to read more]") else NULL,
+    if (start_line > 1) paste0("[Note: reading from offset ", start_line, "]") else NULL,
+    "",
+    format_lines(shown_content, start_line)
+  )
 
-  result <- paste(lines, collapse = "\n")
+  result <- paste(body, collapse = "\n")
   MAX_CHARS <- 25000L
   if (nchar(result) > MAX_CHARS) {
     return(paste0(
-      "The file content exceeds ", MAX_CHARS, " characters. ",
+      "File content exceeds ", MAX_CHARS, " characters. ",
       "Use offset and limit parameters to read selected lines of the file, ",
       "or search for specific content instead of reading the whole file."
     ))
   }
-  resolved <- normalizePath(file_path, mustWork = FALSE)
-  agenticr_env$files_read[[resolved]] <- TRUE
-
   result
+}
+
+#' Format lines with zero-padded line numbers
+#'
+#' @keywords internal
+format_lines <- function(lines, start_line) {
+  end <- start_line + length(lines) - 1
+  width <- nchar(as.character(end))
+  fmt <- paste0("%", width, "d | %s")
+  sapply(seq_along(lines), function(i) sprintf(fmt, start_line + i - 1, lines[i]))
 }
 
 #' Get R function source code
