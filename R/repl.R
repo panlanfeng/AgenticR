@@ -114,11 +114,12 @@ run_agentic_repl <- function() {
     )
 
     if (is.null(input)) break
-    agenticr_env$interrupt_pending <- FALSE
 
     input <- trimws(input)
     if (input %in% c("exit()", "quit()", "exit", "quit", "q")) break
     if (input == "") next
+
+    agenticr_env$interrupt_pending <- FALSE
 
     if (grepl("^/", input)) {
       handle_slash_command(input)
