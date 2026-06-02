@@ -393,39 +393,41 @@ extract_memory <- function(messages) {
     )
   }
 
+  has_existing <- nchar(existing) > 0
   memory_prompt <- paste0(
-    "Extract persistent information from this conversation. ",
-    "Write in Markdown with these sections:\n\n",
+    if (has_existing) {
+      paste0(
+        "Existing MEMORY.md content:\n```markdown\n",
+        substr(existing, 1, 2000),
+        "\n```\n\n",
+        "Identify ONLY new findings from this conversation that are NOT already covered above. ",
+        "Output only the new additions, preserving the same section structure.\n\n"
+      )
+    } else {
+      paste0(
+        "Extract persistent information from this conversation. ",
+        "Write in Markdown with these sections:\n\n"
+      )
+    },
     "## User Profile\n",
     "- Knowledge level, job role, preferred collaboration style\n",
     "- How they like to receive information (concise? detailed?) and WHY\n",
-    "- What packages, syntax, or approaches they consistently prefer ",
-    "(e.g. dplyr over data.table, base R over tidyverse) and WHY\n\n",
+    "- What packages, syntax, or approaches they consistently prefer and WHY\n\n",
     "## Reflection & Learnings\n",
     "- What worked well and WHY it worked\n",
-    "- Which approaches caused errors and the root cause\n",
-    "- Underlying principles learned, not just surface fixes\n\n",
+    "- Which approaches caused errors and the root cause\n\n",
     "## Environment Learnings\n",
     "- R packages that work well (or known incompatibilities)\n",
-    "- Commands or functions that caused issues and WHY they failed\n\n",
+    "- Commands or functions that caused issues and WHY\n\n",
     "## Feedback & Corrections\n",
     "- When the user corrected you, what was the mistake\n",
-    "- WHY the correct approach is correct — the underlying principle\n\n",
+    "- WHY the correct approach is correct\n\n",
     "RULES:\n",
-    "- Only general, stable patterns. No one-time requests or temporary needs.\n",
+    "- Only general, stable patterns. No one-time requests.\n",
     "- NEVER include file paths, project names, or session-specific details.\n",
-    "- MERGE with existing memory — do not duplicate. Update outdated info.\n",
-    "- For every preference or learning, explain WHY, not just WHAT.\n",
+    "- For every finding, explain WHY, not just WHAT.\n",
     "- Keep under 400 words total.\n\n"
   )
-  if (nchar(existing) > 0) {
-    memory_prompt <- paste0(
-      memory_prompt,
-      "Existing MEMORY.md content to merge with:\n```markdown\n",
-      substr(existing, 1, 2000),
-      "\n```\n\n"
-    )
-  }
 
   summary_msgs <- c(messages, list(list(
     role = "user", content = memory_prompt
@@ -443,6 +445,10 @@ extract_memory <- function(messages) {
   if (nchar(trimws(memory)) == 0) return()
 
   dir.create(dirname(agenticr_env$memory_file), showWarnings = FALSE, recursive = TRUE)
-  writeLines(memory, agenticr_env$memory_file)
+  if (nchar(existing) > 0) {
+    cat("\n\n", memory, "\n", file = agenticr_env$memory_file, append = TRUE)
+  } else {
+    writeLines(memory, agenticr_env$memory_file)
+  }
   agenticr_env$last_memory_extract_tokens <- agenticr_env$total_session_tokens
 }

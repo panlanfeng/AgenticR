@@ -580,7 +580,7 @@ process_with_agent <- function(user_input) {
     }
 
     agenticr_env$total_session_tokens <- estimate_tokens(messages, tools)
-    since_last <- token_count - agenticr_env$last_memory_extract_tokens
+    since_last <- estimate_tokens(messages, tools) - agenticr_env$last_memory_extract_tokens
     if (since_last > 10000) {
       extract_memory(messages)
     }
