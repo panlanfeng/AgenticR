@@ -93,6 +93,14 @@ get_tool_definitions <- function() {
             limit = list(
               type = "integer",
               description = "Maximum lines to read (default: 2000, max: 2000)"
+            ),
+            pattern = list(
+              type = "string",
+              description = "Regex pattern to filter lines. When set, only matching lines (with context) are returned."
+            ),
+            context_around = list(
+              type = "integer",
+              description = "Lines of context to show before and after each match when using pattern (default: 2)"
             )
           ),
           required = list("file_path")
@@ -377,7 +385,7 @@ execute_tool <- function(tool_name, arguments) {
     execute_r_code = tool_execute_r_code(arguments$code),
     get_dataframe_info = tool_get_dataframe_info(arguments$name),
     search_variables = tool_search_variables(arguments$pattern),
-    read_file = tool_read_file(arguments$file_path, arguments$offset, arguments$limit),
+    read_file = tool_read_file(arguments$file_path, arguments$offset, arguments$limit, arguments$pattern, arguments$context_around),
     get_function_help = tool_get_function_help(arguments$name, arguments$package),
     get_function_source = tool_get_function_source(arguments$name, arguments$package),
     grep_search = tool_grep_search(arguments$pattern, arguments$path %||% ".", arguments$context_lines %||% 2L),
@@ -594,7 +602,7 @@ tool_search_variables <- function(pattern) {
 #' Read a file
 #'
 #' @keywords internal
-tool_read_file <- function(file_path, offset = NULL, limit = NULL) {
+tool_read_file <- function(file_path, offset = NULL, limit = NULL, pattern = NULL, context_around = NULL) {
   if (is.null(file_path) || nchar(trimws(file_path)) == 0) {
     return("Error: No file path provided")
   }
@@ -626,6 +634,38 @@ tool_read_file <- function(file_path, offset = NULL, limit = NULL) {
 
   resolved <- normalizePath(file_path, mustWork = FALSE)
   agenticr_env$files_read[[resolved]] <- TRUE
+  MAX_CHARS <- 25000L
+
+  # Pattern-based search within the file
+  if (!is.null(pattern) && nchar(trimws(pattern)) > 0) {
+    ctx <- if (is.null(context_around) || is.na(context_around)) 2L else max(0L, as.integer(context_around))
+    matches <- grep(pattern, content, ignore.case = FALSE, perl = TRUE)
+    if (length(matches) == 0) {
+      return(paste0("No matches for '", pattern, "' in ", resolved))
+    }
+    # Build match blocks with context
+    shown <- integer(0)
+    for (m in matches) {
+      start <- max(1L, m - ctx)
+      end <- min(total_lines, m + ctx)
+      shown <- unique(c(shown, start:end))
+    }
+    shown <- sort(shown)
+    match_lines <- content[shown]
+    match_nums <- which(seq_along(content) %in% shown)
+    body <- c(
+      paste0("[File: ", resolved, "]"),
+      paste0("[Lines: ", total_lines, " total]"),
+      paste0("[Pattern: '", pattern, "' — ", length(matches), " matches showing ", length(shown), " lines with +/-", ctx, " context]"),
+      "",
+      format_lines(match_lines, shown[1])
+    )
+    result <- paste(body, collapse = "\n")
+    if (nchar(result) > MAX_CHARS) {
+      return(trim_to_limit(result, MAX_CHARS))
+    }
+    return(result)
+  }
 
   # For large files read without explicit offset, show head + tail
   if (is.null(offset) && total_lines > limit_val + 200) {
@@ -670,7 +710,6 @@ tool_read_file <- function(file_path, offset = NULL, limit = NULL) {
   )
 
   result <- paste(body, collapse = "\n")
-  MAX_CHARS <- 25000L
   if (nchar(result) > MAX_CHARS) {
     return(paste0(
       "File content exceeds ", MAX_CHARS, " characters. ",
@@ -679,6 +718,15 @@ tool_read_file <- function(file_path, offset = NULL, limit = NULL) {
     ))
   }
   result
+}
+
+#' Truncate output at char limit with guidance
+#'
+#' @keywords internal
+trim_to_limit <- function(result, max_chars) {
+  truncated <- substr(result, 1, max_chars - 100)
+  paste0(truncated, "\n\n[Output truncated at ", max_chars, " characters. ",
+         "Use offset, limit, or pattern to narrow results.]")
 }
 
 #' Format lines with zero-padded line numbers
