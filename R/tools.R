@@ -331,6 +331,27 @@ get_tool_definitions <- function() {
           required = list("todos")
         )
       )
+    ),
+    list(
+      type = "function",
+      "function" = list(
+        name = "load_skill_body",
+        description = paste0(
+          "Load the full instructions for an available skill. ",
+          "Use this when you need to apply a skill's detailed rules ",
+          "that are not summarized in the frontmatter."
+        ),
+        parameters = list(
+          type = "object",
+          properties = list(
+            name = list(
+              type = "string",
+              description = "Name of the skill to load"
+            )
+          ),
+          required = list("name")
+        )
+      )
     )
   )
 }
@@ -394,6 +415,7 @@ execute_tool <- function(tool_name, arguments) {
     file_write = tool_file_write(arguments$file_path, arguments$content),
     install_package = tool_install_package(arguments$name),
     todo_write = tool_todo_write(arguments$todos),
+    load_skill_body = tool_load_skill_body(arguments$name),
     {
       if (startsWith(tool_name, "mcp_")) {
         mcp_execute_tool(tool_name, arguments)

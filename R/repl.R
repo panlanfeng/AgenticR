@@ -207,7 +207,7 @@ agentic_resume <- function(session_id, ...) {
 
   agenticr_env$stable_summary <- compaction_summary
   agenticr_env$conversation <- Filter(function(m) {
-    !grepl("^\\[(AGENTS\\.md|Active skill:|Stable context|Compaction summary)\\]",
+    !grepl("^\\[(AGENTS\\.md|Active skill:|Available skill:|Stable context|Compaction summary)\\]",
            m$content %||% "")
   }, conv)
   agenticr_env$context_injected <- TRUE
@@ -756,7 +756,7 @@ process_with_agent <- function(user_input) {
 
   conv <- messages[sapply(messages, function(m) {
     m$role != "system" &&
-    !grepl("^\\[(AGENTS\\.md|Active skill:|Stable context|Compaction summary)\\]",
+    !grepl("^\\[(AGENTS\\.md|Active skill:|Available skill:|Stable context|Compaction summary)\\]",
            m$content %||% "")
   })]
   conv <- sanitize_messages(conv)

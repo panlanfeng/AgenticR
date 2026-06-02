@@ -1,14 +1,49 @@
 #' Skills system — loadable prompt templates from ~/.agenticr/skills/
 #'
-#' Skills are stored as SKILL.md files in subdirectories of the skills
-#' directory. Each skill is injected as a [Active skill: name] block
-#' in the conversation context.
-#'
-#' Install a skill: agentic_install_skill("https://github.com/user/repo/skills/name/SKILL.md")
+#' Skills use YAML frontmatter. Only frontmatter fields are loaded into
+#' the context. The full body is loaded on-demand via the load_skill_body tool.
+#' Format:
+#'   ---
+#'   description: Short description of the skill
+#'   trigger: When to apply this skill (optional hint for the model)
+#'   ---
+#'   # Full skill body (loaded only when needed)
 #'
 #' @keywords internal
 
 SKILLS_DIR <- file.path(Sys.getenv("HOME", unset = "~"), ".agenticr", "skills")
+
+#' Parse YAML frontmatter from a SKILL.md file
+#'
+#' @keywords internal
+parse_skill_frontmatter <- function(content, name) {
+  pattern <- "^---\\s*\\n([\\s\\S]*?)---\\s*\\n?"
+  match <- regexpr(pattern, content, perl = TRUE)
+  if (match == -1) {
+    return(list(
+      name = name,
+      description = "",
+      trigger = "",
+      body = content
+    ))
+  }
+  cap_start <- attr(match, "capture.start")[1, 1]
+  cap_len <- attr(match, "capture.length")[1, 1]
+  frontmatter_text <- substr(content, cap_start, cap_start + cap_len - 1)
+  body <- substr(content, cap_start + cap_len + 4, nchar(content))
+  body <- trimws(body)
+
+  fm <- tryCatch(
+    yaml::yaml.load(frontmatter_text, eval.expr = FALSE),
+    error = function(e) list()
+  )
+  list(
+    name = name,
+    description = fm$description %||% "",
+    trigger = fm$trigger %||% "",
+    body = body
+  )
+}
 
 #' Load all skills from the skills directory
 #'
@@ -25,31 +60,13 @@ load_skills <- function() {
       error = function(e) ""
     )
     if (nchar(trimws(content)) > 0) {
-      skills[[name]] <- list(name = name, path = skill_file, content = content)
+      skills[[name]] <- parse_skill_frontmatter(content, name)
     }
   }
   skills
 }
 
-#' Get combined prompt blocks for all loaded skills
-#'
-#' @keywords internal
-get_skill_prompts <- function() {
-  skills <- load_skills()
-  if (length(skills) == 0) return("")
-  blocks <- character(0)
-  for (s in skills) {
-    blocks <- c(blocks, paste0(
-      "[Active skill: ", s$name, "]\n",
-      "Apply the following instructions:\n\n",
-      s$content, "\n\n",
-      "[/Active skill: ", s$name, "]"
-    ))
-  }
-  paste(blocks, collapse = "\n\n")
-}
-
-#' Get prompts for only the currently active skills
+#' Get frontmatter-only prompts for active skills
 #'
 #' @keywords internal
 get_active_skill_prompts <- function() {
@@ -59,14 +76,34 @@ get_active_skill_prompts <- function() {
   for (name in names(agenticr_env$active_skills)) {
     s <- all_skills[[name]]
     if (is.null(s)) next
-    blocks <- c(blocks, paste0(
-      "[Active skill: ", s$name, "]\n",
-      "Apply the following instructions:\n\n",
-      s$content, "\n\n",
-      "[/Active skill: ", s$name, "]"
-    ))
+    desc <- s$description
+    trigger <- s$trigger
+    line <- paste0(
+      "[Available skill: ", s$name, "]\n",
+      "description: ", if (nchar(desc) > 0) desc else "(no description)",
+      if (nchar(trigger) > 0) paste0("\ntrigger: ", trigger) else "",
+      "\n[Use load_skill_body to read full instructions]"
+    )
+    blocks <- c(blocks, line)
   }
   paste(blocks, collapse = "\n\n")
+}
+
+#' Load the full body of a skill for the LLM
+#'
+#' @param name Skill name
+#' @return Full skill body text
+#' @keywords internal
+tool_load_skill_body <- function(name) {
+  all_skills <- load_skills()
+  s <- all_skills[[name]]
+  if (is.null(s)) {
+    return(paste0("Skill '", name, "' not found. Use agentic_skills() to list installed skills."))
+  }
+  if (nchar(s$body) == 0) {
+    return(paste0("Skill '", name, "' has no body content."))
+  }
+  paste0("[Skill: ", s$name, "]\n", s$body, "\n[/Skill: ", s$name, "]")
 }
 
 #' Install a skill from a URL
