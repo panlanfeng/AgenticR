@@ -290,7 +290,7 @@ load_config <- function() {
     api_base = "https://api.deepseek.com",
     api_model = "deepseek-v4-pro",
     provider = "deepseek",
-    max_tokens = 4096,
+    max_tokens = 32768,
     temperature = 0.1,
     max_turn_tokens = 64000,
     max_context_tokens = 1048576

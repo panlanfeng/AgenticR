@@ -557,7 +557,7 @@ process_with_agent <- function(user_input) {
   turn_tokens <- 0L
   max_turn_tokens <- min(
     cfg$max_turn_tokens %||% 64000L,
-    as.integer((agenticr_env$max_context_tokens %||% 131072L) * 0.1)
+    as.integer((agenticr_env$max_context_tokens %||% 131072L) * 0.4)
   )
   recent_errors <- list()
   while (TRUE) {
@@ -617,8 +617,8 @@ process_with_agent <- function(user_input) {
     }
 
     usage <- stream_result$usage
-    if (!is.null(usage) && !is.null(usage$total_tokens)) {
-      turn_tokens <- turn_tokens + as.integer(usage$total_tokens)
+    if (!is.null(usage) && !is.null(usage$completion_tokens)) {
+      turn_tokens <- turn_tokens + as.integer(usage$completion_tokens)
     }
 
     # Cache hit rate from API ground truth
