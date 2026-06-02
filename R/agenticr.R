@@ -35,9 +35,13 @@ agenticr_env$stable_summary <- NULL
 agenticr_env$context_injected <- FALSE
 agenticr_env$last_known_cwd <- ""
 agenticr_env$max_context_tokens <- 131072L
-agenticr_env$memory_file <- file.path(
+agenticr_env$memory_dir <- file.path(
   Sys.getenv("HOME", unset = "~"),
   ".agenticr",
+  "memory"
+)
+agenticr_env$memory_file <- file.path(
+  agenticr_env$memory_dir,
   "MEMORY.md"
 )
 agenticr_env$last_memory_extract_tokens <- 0L

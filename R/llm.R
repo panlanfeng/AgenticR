@@ -444,11 +444,26 @@ extract_memory <- function(messages) {
   )
   if (nchar(trimws(memory)) == 0) return()
 
-  dir.create(dirname(agenticr_env$memory_file), showWarnings = FALSE, recursive = TRUE)
-  if (nchar(existing) > 0) {
-    cat("\n\n", memory, "\n", file = agenticr_env$memory_file, append = TRUE)
-  } else {
-    writeLines(memory, agenticr_env$memory_file)
+  dir.create(agenticr_env$memory_dir, showWarnings = FALSE, recursive = TRUE)
+
+  # Parse sections from sub-agent response and write to section files
+  section_map <- list(
+    "User Profile" = "preferences",
+    "Reflection & Learnings" = "learnings",
+    "Environment Learnings" = "environment",
+    "Feedback & Corrections" = "corrections"
+  )
+  for (heading in names(section_map)) {
+    pattern <- paste0("## ", heading, "\\s*\\n([\\s\\S]*?)(?=\\n## |\\Z)")
+    match <- regexpr(pattern, memory, perl = TRUE)
+    if (match == -1) next
+    cap_start <- attr(match, "capture.start")[1, 1]
+    cap_len <- attr(match, "capture.length")[1, 1]
+    if (is.na(cap_start) || cap_len <= 0) next
+    section_content <- trimws(substr(memory, cap_start, cap_start + cap_len - 1))
+    if (nchar(section_content) < 10) next
+    tool_memory_write(section_map[[heading]], section_content)
   }
+
   agenticr_env$last_memory_extract_tokens <- agenticr_env$total_session_tokens
 }

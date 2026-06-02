@@ -352,6 +352,31 @@ get_tool_definitions <- function() {
           required = list("name")
         )
       )
+    ),
+    list(
+      type = "function",
+      "function" = list(
+        name = "memory_write",
+        description = paste0(
+          "Write information to persistent memory. Use this when the user asks ",
+          "you to remember something, or when you learn something important about ",
+          "their preferences or environment."
+        ),
+        parameters = list(
+          type = "object",
+          properties = list(
+            section = list(
+              type = "string",
+              description = "Memory section: preferences, environment, corrections, or learnings"
+            ),
+            content = list(
+              type = "string",
+              description = "Content to append to this memory section (Markdown format)"
+            )
+          ),
+          required = list("section", "content")
+        )
+      )
     )
   )
 }
@@ -416,6 +441,7 @@ execute_tool <- function(tool_name, arguments) {
     install_package = tool_install_package(arguments$name),
     todo_write = tool_todo_write(arguments$todos),
     load_skill_body = tool_load_skill_body(arguments$name),
+    memory_write = tool_memory_write(arguments$section, arguments$content),
     {
       if (startsWith(tool_name, "mcp_")) {
         mcp_execute_tool(tool_name, arguments)
@@ -836,8 +862,8 @@ tool_get_function_help <- function(name, package = NULL) {
     help_lines <- c(
       help_lines[1:80],
       paste0("... [", length(help_lines) - 80, " more lines]")
-    )
-  }
+  )
+}
 
   paste(help_lines, collapse = "\n")
 }
@@ -1163,4 +1189,36 @@ tool_todo_write <- function(todos) {
     "continue to use the todo list to track your progress. ",
     "Please proceed with the current tasks if applicable."
   )
+}
+
+#' Write to persistent memory, updating the index
+#'
+#' @keywords internal
+tool_memory_write <- function(section, content) {
+  if (is.null(section) || is.null(content) || nchar(trimws(content)) == 0) {
+    return("Error: section and non-empty content are required")
+  }
+  valid_sections <- c("preferences", "environment", "corrections", "learnings")
+  if (!section %in% valid_sections) {
+    return(paste0("Error: section must be one of: ", paste(valid_sections, collapse = ", ")))
+  }
+
+  dir.create(agenticr_env$memory_dir, showWarnings = FALSE, recursive = TRUE)
+  section_file <- file.path(agenticr_env$memory_dir, paste0(section, ".md"))
+  cat("\n", content, "\n", file = section_file, append = TRUE)
+
+  index_file <- agenticr_env$memory_file
+  existing_index <- if (file.exists(index_file)) {
+    tryCatch(readLines(index_file, warn = FALSE), error = function(e) character(0))
+  } else character(0)
+
+  section_header <- paste0("## ", section, ".md")
+  if (!any(grepl(section_header, existing_index, fixed = TRUE))) {
+    summary <- if (nchar(content) > 120) paste0(substr(content, 1, 120), "...") else content
+    summary <- gsub("\n", " ", summary)
+    cat(paste(section_header, paste0("- ", summary), "", sep = "\n"), "\n",
+        file = index_file, append = TRUE)
+  }
+
+  paste0("Memory written to ", section, ".md.")
 }

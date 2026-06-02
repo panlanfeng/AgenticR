@@ -976,10 +976,15 @@ load_agents_md <- function() {
 build_stable_context <- function() {
   mem_note <- ""
   if (file.exists(agenticr_env$memory_file)) {
-    mem_note <- paste0(
-      "\nMemory: use read_file to load ", agenticr_env$memory_file,
-      " -- contains user preferences and working style"
+    content <- tryCatch(
+      paste(readLines(agenticr_env$memory_file, warn = FALSE), collapse = "\n"),
+      error = function(e) ""
     )
+    if (nchar(trimws(content)) > 0) {
+      mem_note <- paste0(
+        "\nMemory index (use read_file to load individual sections):\n", content
+      )
+    }
   }
   paste0(
     "[Stable context]\n",
