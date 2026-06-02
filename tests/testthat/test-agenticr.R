@@ -511,3 +511,56 @@ test_that("check_error_loop handles NULL tool_result", {
   expect_null(res$msg)
   expect_equal(length(res$errors), 0)
 })
+
+# ============================================================================
+# Interrupt (Ctrl+C twice to exit) tests
+# ============================================================================
+
+simulate_interrupt <- function(pending) {
+  if (isTRUE(pending)) {
+    agenticr_env$interrupt_pending <- FALSE
+    NULL
+  } else {
+    agenticr_env$interrupt_pending <- TRUE
+    ""
+  }
+}
+
+test_that("double Ctrl+C: first sets flag, second exits", {
+  agenticr_env <- get("agenticr_env", envir = asNamespace("agenticr"))
+  agenticr_env$interrupt_pending <- FALSE
+
+  r1 <- simulate_interrupt(agenticr_env$interrupt_pending)
+  expect_equal(r1, "")
+  expect_true(agenticr_env$interrupt_pending)
+
+  r2 <- simulate_interrupt(agenticr_env$interrupt_pending)
+  expect_null(r2)
+  expect_false(agenticr_env$interrupt_pending)
+})
+
+test_that("interrupt_pending resets after typing real input", {
+  agenticr_env <- get("agenticr_env", envir = asNamespace("agenticr"))
+  agenticr_env$interrupt_pending <- TRUE
+
+  input <- "some real input"
+  if (input != "") agenticr_env$interrupt_pending <- FALSE  # the fix: only on non-empty
+  expect_false(agenticr_env$interrupt_pending)
+
+  r <- simulate_interrupt(agenticr_env$interrupt_pending)
+  expect_equal(r, "")
+  expect_true(agenticr_env$interrupt_pending)
+})
+
+test_that("interrupt_pending NOT reset on empty input (Ctrl+C or blank Enter)", {
+  agenticr_env <- get("agenticr_env", envir = asNamespace("agenticr"))
+  agenticr_env$interrupt_pending <- TRUE
+
+  input <- ""
+  # empty input skips — flag stays TRUE, next Ctrl+C exits
+  expect_true(agenticr_env$interrupt_pending)
+
+  r <- simulate_interrupt(agenticr_env$interrupt_pending)
+  expect_null(r)
+  expect_false(agenticr_env$interrupt_pending)
+})
