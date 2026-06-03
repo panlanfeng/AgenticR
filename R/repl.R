@@ -658,6 +658,14 @@ process_with_agent <- function(user_input) {
       turn_tokens <- turn_tokens + as.integer(usage$completion_tokens)
     }
 
+    # Track API token counts for compaction accuracy
+    if (!is.null(usage) && !is.null(usage$prompt_tokens)) {
+      estimated <- estimate_tokens(messages, tools)
+      if (estimated > 0) {
+        agenticr_env$token_calibration <- as.integer(usage$prompt_tokens) / estimated
+      }
+    }
+
     # Cache hit rate from API ground truth
     cache_hit <- 0L
     cache_miss <- 0L

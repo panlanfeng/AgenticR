@@ -281,6 +281,12 @@ estimate_tokens <- function(messages, tools = NULL) {
     tools_json <- jsonlite::toJSON(tools, auto_unbox = TRUE)
     total <- total + nchar(tools_json) / 3.5
   }
+
+  # Apply API calibration factor for better accuracy
+  if (!is.null(agenticr_env$token_calibration) && agenticr_env$token_calibration > 0) {
+    total <- total * agenticr_env$token_calibration
+  }
+
   ceiling(total)
 }
 
@@ -288,6 +294,9 @@ hard_truncate_messages <- function(messages, conv_start) {
   conv <- messages[conv_start:length(messages)]
   while (length(conv) > 0 && conv[[1]]$role == "tool") conv <- conv[-1]
   keep <- min(16, length(conv))
+  while (estimate_tokens(tail(conv, keep)) > 4000 && keep > 4) {
+    keep <- keep - 1
+  }
   conv <- tail(conv, keep)
   last_slot <- messages[[length(messages)]]
   new_msgs <- c(messages[1:min(conv_start - 1, 3)], conv)
