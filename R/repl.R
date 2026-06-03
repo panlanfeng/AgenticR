@@ -743,16 +743,6 @@ process_with_agent <- function(user_input) {
     }
 
     if (nchar(content) > 0) {
-      code_blocks <- extract_r_code_blocks(content)
-
-      if (length(code_blocks) > 0) {
-        text_only <- remove_r_code_blocks(content)
-        if (nchar(trimws(text_only)) > 0) {
-          cat(text_only, "\n")
-          utils::flush.console()
-        }
-      }
-
       msg_entry <- list(
         role = "assistant",
         content = content
@@ -761,22 +751,6 @@ process_with_agent <- function(user_input) {
         msg_entry$reasoning_content <- reasoning
       }
       messages <- c(messages, list(msg_entry))
-
-      if (length(code_blocks) > 0) {
-        for (code in code_blocks) {
-          tool_result <- tool_execute_r_code(code)
-          messages <- c(messages, list(list(
-            role = "user",
-            content = paste0(
-              "[R code executed]\n", code,
-              if (nchar(trimws(tool_result)) > 0)
-                paste0("\n\nOutput:\n", tool_result)
-              else ""
-            )
-          )))
-        }
-        next
-      }
 
       cat("\n")
       if (!is.na(cache_pct)) {
