@@ -49,6 +49,7 @@ agenticr_env$total_session_tokens <- 0L
 agenticr_env$active_skills <- list()
 agenticr_env$files_read <- list()
 agenticr_env$todos <- list()
+agenticr_env$tasks <- list()
 agenticr_env$session_dir <- NULL
 agenticr_env$session_id <- NULL
 agenticr_env$outputs_dir <- NULL

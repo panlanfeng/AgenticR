@@ -27,6 +27,7 @@ agentic <- function(auto = TRUE, ...) {
   agenticr_env$active_skills <- list()
   agenticr_env$files_read <- list()
   agenticr_env$todos <- list()
+  agenticr_env$tasks <- list()
   agenticr_env$session_id <- paste0(format(Sys.time(), "%Y%m%d_%H%M%S"), "_",
                                      paste(sample(c(0:9, letters[1:6]), 8, replace = TRUE), collapse = ""))
   agenticr_env$session_dir <- file.path(
@@ -220,6 +221,7 @@ agentic_resume <- function(session_id, ...) {
   agenticr_env$active_skills <- list()
   agenticr_env$files_read <- list()
   agenticr_env$todos <- list()
+  agenticr_env$tasks <- list()
   agenticr_env$session_id <- session_id
   agenticr_env$session_dir <- session_dir
   agenticr_env$outputs_dir <- file.path(session_dir, "outputs")
@@ -838,7 +840,32 @@ write_turn_history <- function(user_input, result) {
   cat(line, "\n", file = agenticr_env$history_file, append = TRUE)
 }
 
-#' Show current todo list
+#' Show current task list
+#'
+#' @keywords internal
+show_todos <- function() {
+  if (length(agenticr_env$tasks) == 0 || nrow(agenticr_env$tasks) == 0) {
+    cli::cli_alert_info("No active task list.")
+    return(invisible())
+  }
+  cli::cli_h2("Task List")
+  t <- agenticr_env$tasks
+  for (i in seq_len(nrow(t))) {
+    item <- t[i, ]
+    mark <- switch(item$status,
+      completed = cli::col_green("[x]"),
+      in_progress = cli::col_yellow("[>]"),
+      cancelled = cli::col_red("[-]"),
+      cli::col_silver("[ ]"))
+    cli::cli_li("#{i} {mark} {item$content} ({item$priority})")
+  }
+  done <- sum(t$status == "completed")
+  cancelled <- sum(t$status == "cancelled")
+  if (done == nrow(t) - cancelled) {
+    cli::cli_alert_success("All tasks complete!")
+  }
+  invisible()
+}
 
 #' Show recent conversation history from turns.jsonl
 #'
@@ -897,10 +924,10 @@ SYSTEM_PROMPT <- paste0(
   "their intent into R code and execute it via tools.\n",
   "- When user asks a complex task, break it down and achieve it step by step using tools.\n",
   "- Use the list_files tool to explore repository structure when needed.\n",
-  "- Break down and manage your work with the TodoWrite tool.\n",
-  "  Use it to plan your work and help the user track your progress.\n",
-  "  Mark each task as completed as soon as you are done with the task.\n",
-  "  Do not batch up multiple tasks before marking them as completed.\n",
+  "- Break down and manage your work with the task_write and task_update tools.\n",
+  "  Use task_list to review current progress. Mark tasks completed immediately\n",
+  "  after finishing — do not batch multiple updates. Keep exactly one task\n",
+  "  in_progress at a time.\n",
   "- When you notice a recurring pattern (same kind of request 3+ times) or the user ",
   "asks you to remember something, propose creating a reusable skill. ",
   "Say 'I notice a recurring pattern. Should I create a skill for this?' ",

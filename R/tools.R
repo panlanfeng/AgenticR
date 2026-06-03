@@ -296,39 +296,49 @@ get_tool_definitions <- function() {
     list(
       type = "function",
       "function" = list(
-        name = "todo_write",
-        description = paste0(
-          "Use this tool to create and manage a structured task list for your coding session. ",
-          "Use it to track progress, break down complex tasks, and show the user what you are working on. ",
-          "Only have one task as in_progress at a time. Complete existing tasks before starting new ones."
-        ),
+        name = "task_list",
+        description = "List all current tasks with their IDs, statuses, and priorities. Use this to review progress before deciding what to do next.",
+        parameters = list(type = "object", properties = list())
+      )
+    ),
+    list(
+      type = "function",
+      "function" = list(
+        name = "task_write",
+        description = "Create or replace the entire task list. Use for initial planning or restructuring. Each task needs content, status, and priority.",
         parameters = list(
           type = "object",
           properties = list(
             todos = list(
-              type = "array",
-              description = "The updated todo list",
+              type = "array", description = "The complete task list",
               items = list(
                 type = "object",
                 properties = list(
-                  content = list(
-                    type = "string",
-                    description = "Brief description of the task"
-                  ),
-                  status = list(
-                    type = "string",
-                    description = "Status: pending, in_progress, completed, or cancelled"
-                  ),
-                  priority = list(
-                    type = "string",
-                    description = "Priority: high, medium, or low"
-                  )
+                  content = list(type = "string", description = "Brief description of the task"),
+                  status = list(type = "string", description = "Status: pending, in_progress, completed, or cancelled"),
+                  priority = list(type = "string", description = "Priority: high, medium, or low")
                 ),
                 required = list("content", "status", "priority")
               )
             )
           ),
           required = list("todos")
+        )
+      )
+    ),
+    list(
+      type = "function",
+      "function" = list(
+        name = "task_update",
+        description = "Update a single task by its ID. Call immediately after finishing each task — do not batch updates.",
+        parameters = list(
+          type = "object",
+          properties = list(
+            id = list(type = "integer", description = "Task ID to update (1-indexed, from task_list)"),
+            status = list(type = "string", description = "New status: pending, in_progress, completed, or cancelled"),
+            content = list(type = "string", description = "Updated description (optional)")
+          ),
+          required = list("id", "status")
         )
       )
     ),
@@ -496,7 +506,9 @@ execute_tool <- function(tool_name, arguments) {
     file_edit = tool_file_edit(arguments$file_path, arguments$old_string, arguments$new_string, arguments$replace_all),
     file_write = tool_file_write(arguments$file_path, arguments$content),
     install_package = tool_install_package(arguments$name),
-    todo_write = tool_todo_write(arguments$todos),
+    task_list = tool_task_list(),
+    task_write = tool_task_write(arguments$todos),
+    task_update = tool_task_update(arguments$id, arguments$status, arguments$content),
     load_skill_body = tool_load_skill_body(arguments$name),
     memory_write = tool_memory_write(arguments$section, arguments$content),
     create_skill = tool_create_skill(arguments$name, arguments$description, arguments$trigger, arguments$body),
@@ -1215,39 +1227,87 @@ tool_install_package <- function(name) {
   paste0("Installation of '", name, "' was declined by user.")
 }
 
-#' Update the todo list state from LLM tool call
+#' List all current tasks
 #'
 #' @keywords internal
-tool_todo_write <- function(todos) {
+tool_task_list <- function() {
+  if (length(agenticr_env$tasks) == 0 || nrow(agenticr_env$tasks) == 0) {
+    return("No tasks yet. Use task_write to create the first task list.")
+  }
+  t <- agenticr_env$tasks; n <- nrow(t)
+  done <- sum(t$status == "completed"); cancelled <- sum(t$status == "cancelled")
+  active <- sum(t$status == "in_progress"); pending <- sum(t$status == "pending")
+
+  lines <- c(sprintf("Tasks: %d/%d (%d pending, %d in_progress)", done, n - cancelled, pending, active), "")
+  for (i in seq_len(n)) {
+    item <- t[i, ]
+    mark <- switch(item$status, completed = "[x]", in_progress = "[>]", cancelled = "[-]", "[ ]")
+    lines <- c(lines, sprintf("#%d %s %s (%s)", i, mark, item$content, item$priority))
+  }
+  if (pending > 0) {
+    lines <- c(lines, "", sprintf("Next: start task #%d", which(t$status == "pending")[1]))
+  } else if (done == n - cancelled) {
+    lines <- c(lines, "", "All active tasks completed.")
+  }
+  paste(lines, collapse = "\n")
+}
+
+#' Create or replace the entire task list
+#'
+#' @keywords internal
+tool_task_write <- function(todos) {
   if (is.null(todos) || length(todos) == 0) {
     return("Error: todos must be a non-empty array of tasks")
   }
-
-  df <- data.frame(
-    id = integer(),
-    content = character(),
-    status = character(),
-    priority = character(),
-    stringsAsFactors = FALSE
-  )
-
+  df <- data.frame(id = integer(), content = character(), status = character(),
+                   priority = character(), stringsAsFactors = FALSE)
   for (i in seq_along(todos)) {
     t <- todos[[i]]
-    df <- rbind(df, data.frame(
-      id = i,
-      content = t$content %||% "",
-      status = t$status %||% "pending",
-      priority = t$priority %||% "medium",
-      stringsAsFactors = FALSE
-    ))
+    df <- rbind(df, data.frame(id = i, content = t$content %||% "",
+      status = t$status %||% "pending", priority = t$priority %||% "medium",
+      stringsAsFactors = FALSE))
   }
-
-  agenticr_env$todos <- df
+  agenticr_env$tasks <- df
+  n <- nrow(df); done <- sum(df$status == "completed")
+  pending <- sum(df$status == "pending"); in_prog <- sum(df$status == "in_progress")
   paste0(
-    "Todos have been modified successfully. Ensure that you ",
-    "continue to use the todo list to track your progress. ",
-    "Please proceed with the current tasks if applicable."
+    "Tasks: ", n, " total, ", done, " completed, ", in_prog, " in_progress, ", pending, " pending.\n",
+    if (pending > 0) paste0("Start with task #", which(df$status == "pending")[1], ".")
+    else if (in_prog > 0) "Continue the task in progress."
+    else "All tasks resolved."
   )
+}
+
+#' Update a single task by its ID
+#'
+#' @keywords internal
+tool_task_update <- function(id, status, content = NULL) {
+  if (is.null(id) || is.null(status)) return("Error: id and status are required")
+  if (length(agenticr_env$tasks) == 0 || nrow(agenticr_env$tasks) == 0) {
+    return("No tasks exist. Use task_write to create the first task list.")
+  }
+  id <- as.integer(id)
+  if (id < 1 || id > nrow(agenticr_env$tasks)) {
+    return(paste0("Error: task #", id, " does not exist. Valid: 1-", nrow(agenticr_env$tasks)))
+  }
+  old_status <- agenticr_env$tasks$status[id]
+  agenticr_env$tasks$status[id] <- status
+  if (!is.null(content) && nchar(trimws(content)) > 0) {
+    agenticr_env$tasks$content[id] <- trimws(content)
+  }
+  t <- agenticr_env$tasks; n <- nrow(t)
+  done <- sum(t$status == "completed"); cancelled <- sum(t$status == "cancelled")
+  mark <- switch(status, completed = "[x]", in_progress = "[>]", cancelled = "[-]", "[ ]")
+  lines <- sprintf("Task #%d: %s → %s %s", id, old_status, mark, t$content[id])
+  if (done == n - cancelled) {
+    lines <- c(lines, "All tasks complete.")
+  } else {
+    pending_idx <- which(t$status == "pending")
+    if (length(pending_idx) > 0) {
+      lines <- c(lines, sprintf("Progress: %d/%d. Next: #%d.", done, n - cancelled, pending_idx[1]))
+    }
+  }
+  paste(lines, collapse = "\n")
 }
 
 #' Write to persistent memory, updating the index
