@@ -424,6 +424,7 @@ process_input <- function(input) {
           grepl("there is no package called", error_msg) ||
           grepl("^unexpected (symbol|end of input|')'|','|'}'|string)", error_msg) ||
           grepl("object .* not found", error_msg)) {
+        agenticr_env$repair_mode <- TRUE
         process_with_agent(input)
         return(list(nl = TRUE, response = tail(agenticr_env$conversation, 1)[[1]]$content %||% ""))
       }
@@ -490,6 +491,28 @@ check_error_loop <- function(recent_errors, tool_result) {
   list(msg = NULL, errors = recent_errors)
 }
 
+#' Build task state summary for context injection
+#'
+#' @keywords internal
+build_agent_state <- function() {
+  if (length(agenticr_env$tasks) == 0 || nrow(agenticr_env$tasks) == 0) return("")
+  t <- agenticr_env$tasks; n <- nrow(t)
+  done <- sum(t$status == "completed"); cancelled <- sum(t$status == "cancelled")
+  active <- sum(t$status == "in_progress"); pending <- sum(t$status == "pending")
+  if (pending == 0 && active == 0) return("")  # all done or cancelled
+
+  lines <- sprintf("Tasks: %d/%d completed (%d pending, %d in_progress)", done, n - cancelled, pending, active)
+  for (i in seq_len(n)) {
+    item <- t[i, ]
+    mark <- switch(item$status, completed = "[x]", in_progress = "[>]", cancelled = "[-]", "[ ]")
+    lines <- c(lines, sprintf("#%d %s %s (%s)", i, mark, item$content, item$priority))
+  }
+  if (pending > 0) {
+    lines <- c(lines, sprintf("Next: start task #%d", which(t$status == "pending")[1]))
+  }
+  paste(lines, collapse = "\n")
+}
+
 #' Process natural language input through the LLM agent
 #'
 #' @keywords internal
@@ -542,6 +565,18 @@ process_with_agent <- function(user_input) {
 
   if (length(agenticr_env$conversation) > 0) {
     messages <- c(messages, agenticr_env$conversation)
+  }
+
+  # Dynamic context: modes and task state (after conversation, before user input — preserves cache)
+  if (isTRUE(agenticr_env$repair_mode)) {
+    messages <- c(messages, list(list(role = "user",
+      content = "[MODE: CODE REPAIR] Fix the error. Return ONLY the corrected R code. No explanation.")))
+  } else {
+    task_state <- build_agent_state()
+    if (nchar(task_state) > 0) {
+      messages <- c(messages, list(list(role = "user",
+        content = paste0("[MODE: TASK]\n", task_state))))
+    }
   }
 
   user_content <- user_input
@@ -755,6 +790,8 @@ process_with_agent <- function(user_input) {
     cli::cli_alert_warning("Agent returned an empty response. Try rephrasing your query.")
     break
   }
+
+  agenticr_env$repair_mode <- FALSE
 
   conv <- messages[sapply(messages, function(m) {
     m$role != "system" &&
