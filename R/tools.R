@@ -298,7 +298,7 @@ get_tool_definitions <- function() {
       "function" = list(
         name = "task_list",
         description = "List all current tasks with their IDs, statuses, and priorities. Use this to review progress before deciding what to do next.",
-        parameters = list(type = "object", properties = list())
+        parameters = list(type = "object")
       )
     ),
     list(
