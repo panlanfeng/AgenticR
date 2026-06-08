@@ -104,7 +104,7 @@ run_agentic_repl <- function() {
   agenticr_env$interrupt_pending <- FALSE
   while (TRUE) {
     input <- tryCatch(
-      readline(prompt = cli::col_blue("agent> ")),
+      readline(prompt = "agent> "),
       interrupt = function(e) {
         cat("\033[0m\n")
         if (isTRUE(agenticr_env$interrupt_pending)) {
