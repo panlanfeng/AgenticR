@@ -125,6 +125,19 @@ run_agentic_repl <- function() {
 
     agenticr_env$interrupt_pending <- FALSE
 
+    if (substr(input, 1, 1) == ";") {
+      nl_input <- trimws(substring(input, 2))
+      if (nchar(nl_input) > 0) {
+        nl_input <- read_complete_input(nl_input)
+        cat("\033[90m", "Thinking...", "\033[0m\r", sep = "")
+        utils::flush.console()
+        process_with_agent(nl_input)
+      }
+      cat("\n")
+      utils::flush.console()
+      next
+    }
+
     if (grepl("^/", input)) {
       handle_slash_command(input)
       next
