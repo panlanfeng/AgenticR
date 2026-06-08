@@ -609,11 +609,13 @@ process_with_agent <- function(user_input) {
 
     # Safety ceiling: prevent true infinite loops
     if (round > 200L) {
+      cat("\033[0m")
       cli::cli_alert_warning("Turn exceeded 200 rounds. Stopping to prevent runaway loop.")
       break
     }
 
     if (turn_tokens >= max_turn_tokens) {
+      cat("\033[0m")
       cli::cli_alert_warning("Turn token budget ({max_turn_tokens}) reached. Start a new turn to continue.")
       break
     }
@@ -776,6 +778,7 @@ process_with_agent <- function(user_input) {
       break
     }
 
+    cat("\033[0m")
     cli::cli_alert_warning("Agent returned an empty response. Try rephrasing your query.")
     break
   }
