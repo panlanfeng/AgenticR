@@ -121,8 +121,17 @@ run_agentic_repl <- function() {
 
     input <- trimws(input)
     if (input %in% c("exit()", "quit()", "exit", "quit", "q")) break
-    if (input == "") next
+    if (input == "") {
+      if (isTRUE(agenticr_env$eof_pending)) {
+        agenticr_env$eof_pending <- FALSE
+        break
+      }
+      agenticr_env$eof_pending <- TRUE
+      cli::cli_alert_info("Press {.kbd Ctrl+D} again to exit, or type to continue.")
+      next
+    }
 
+    agenticr_env$eof_pending <- FALSE
     agenticr_env$interrupt_pending <- FALSE
 
     if (substr(input, 1, 1) == ";") {
