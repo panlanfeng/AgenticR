@@ -83,6 +83,9 @@ agentic <- function(auto = TRUE, ...) {
   cli::cli_text("{.emph {cfg$api_model}} @ {.url {cfg$api_base}}")
   cli::cli_text("Session: {.file {agenticr_env$session_dir}}")
 
+  # Snapshot stable context once — never re-read mid-session for cache stability
+  agenticr_env$cached_stable_context <- build_stable_context()
+
   mcp_connect_all()
 
   run_agentic_repl()
@@ -257,6 +260,10 @@ agentic_resume <- function(session_id, ...) {
   if (is.null(cfg)) return(invisible())
 
   cli::cli_text("{.emph {cfg$api_model}} @ {.url {cfg$api_base}}")
+
+  # Snapshot stable context once — never re-read mid-session for cache stability
+  agenticr_env$cached_stable_context <- build_stable_context()
+
   mcp_connect_all()
 
   run_agentic_repl()
@@ -553,7 +560,7 @@ process_with_agent <- function(user_input) {
   }
   messages <- c(messages, list(list(
     role = "user",
-    content = build_stable_context()
+    content = agenticr_env$cached_stable_context %||% build_stable_context()
   )))
 
   if (!is.null(agenticr_env$stable_summary)) {
