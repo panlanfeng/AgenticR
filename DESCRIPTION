@@ -1,7 +1,7 @@
 Package: agenticr
 Type: Package
 Title: AI-Powered R Console Assistant
-Version: 0.2.0
+Version: 0.3.0
 Authors@R: person("Lanfeng", "Pan", role = c("aut", "cre"), email = "panlanfeng@gmail.com")
 Description: An AI-powered assistant for the R console. Type natural language
     or incorrect R code directly in the console, and agenticr routes it to an
