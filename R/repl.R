@@ -36,6 +36,7 @@ agentic <- function(auto = TRUE, ...) {
   agenticr_env$outputs_dir <- file.path(agenticr_env$session_dir, "outputs")
   dir.create(agenticr_env$outputs_dir, showWarnings = FALSE, recursive = TRUE)
   agenticr_env$turns_file <- file.path(agenticr_env$session_dir, "turns.jsonl")
+  agenticr_env$r_history_file <- file.path(agenticr_env$session_dir, "history")
   agenticr_env$turn_counter <- 0L
   agenticr_env$saved_msg_count <- 0L
   agenticr_env$ask_permission <- function(prompt) {
@@ -141,6 +142,7 @@ run_agentic_repl <- function() {
         cat("\033[90m", "Thinking...", "\033[0m\r", sep = "")
         utils::flush.console()
         process_with_agent(nl_input)
+        write_r_history(paste0("# ", nl_input))
       }
       cat("\n")
       utils::flush.console()
@@ -250,6 +252,7 @@ agentic_resume <- function(session_id, ...) {
   agenticr_env$session_id <- session_id
   agenticr_env$session_dir <- session_dir
   agenticr_env$outputs_dir <- file.path(session_dir, "outputs")
+  agenticr_env$r_history_file <- file.path(session_dir, "history")
   agenticr_env$turns_file <- turns_file
   agenticr_env$turn_counter <- 0L
   agenticr_env$saved_msg_count <- length(agenticr_env$conversation)
@@ -465,6 +468,7 @@ process_input <- function(input) {
   }
 
   process_with_agent(input)
+  write_r_history(paste0("# ", input))
   list(nl = TRUE, response = tail(agenticr_env$conversation, 1)[[1]]$content %||% "")
 }
 

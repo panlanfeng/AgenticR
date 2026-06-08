@@ -534,7 +534,6 @@ tool_execute_r_code <- function(code) {
 
   cat(cli::col_green(paste0("\u2192 ", trimws(code), "\n")))
   utils::flush.console()
-  write_r_history(trimws(code))
 
   warnings_list <- list()
   output_lines <- character(0)

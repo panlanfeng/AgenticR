@@ -53,9 +53,6 @@ agenticr_env$tasks <- list()
 agenticr_env$session_dir <- NULL
 agenticr_env$session_id <- NULL
 agenticr_env$outputs_dir <- NULL
-agenticr_env$r_history_file <- file.path(
-  Sys.getenv("HOME", unset = "~"), ".agenticr", "history"
-)
 
 .onLoad <- function(libname, pkgname) {
   cfg <- load_config()
