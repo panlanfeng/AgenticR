@@ -10,6 +10,10 @@
 #' @param auto If TRUE (default), tries to auto-configure from environment.
 #'        Set to FALSE to always show configuration prompt.
 #' @param ... Not used
+#' @examples
+#' \dontrun{
+#' agentic()
+#' }
 #' @export
 agentic <- function(auto = TRUE, ...) {
   if (agenticr_env$is_active) {
@@ -84,7 +88,7 @@ agentic <- function(auto = TRUE, ...) {
   cli::cli_text("{.emph {cfg$api_model}} @ {.url {cfg$api_base}}")
   cli::cli_text("Session: {.file {agenticr_env$session_dir}}")
 
-  # Snapshot stable context once — never re-read mid-session for cache stability
+  # Snapshot stable context once -- never re-read mid-session for cache stability
   agenticr_env$cached_stable_context <- build_stable_context()
 
   mcp_connect_all()
@@ -98,7 +102,7 @@ agentic <- function(auto = TRUE, ...) {
   invisible()
 }
 
-#' Internal REPL loop — shared by agentic() and agentic_resume()
+#' Internal REPL loop -- shared by agentic() and agentic_resume()
 #'
 #' @keywords internal
 run_agentic_repl <- function() {
@@ -272,7 +276,7 @@ agentic_resume <- function(session_id, ...) {
     mcp_disconnect_all()
   })
 
-  cli::cli_h1("AgenticR — Resumed Session")
+  cli::cli_h1("AgenticR -- Resumed Session")
   cli::cli_text("Session: {.file {session_id}}")
   cli::cli_text("Conversation: {.val {length(conv)}} messages restored.")
   load_r_history()
@@ -286,7 +290,7 @@ agentic_resume <- function(session_id, ...) {
 
   cli::cli_text("{.emph {cfg$api_model}} @ {.url {cfg$api_base}}")
 
-  # Snapshot stable context once — never re-read mid-session for cache stability
+  # Snapshot stable context once -- never re-read mid-session for cache stability
   agenticr_env$cached_stable_context <- build_stable_context()
 
   mcp_connect_all()
@@ -344,16 +348,16 @@ read_complete_input <- function(first_line) {
 
   err_msg <- conditionMessage(parsed)
 
-  # "unexpected end of input" → genuinely incomplete → continue
+  # "unexpected end of input" -> genuinely incomplete -> continue
   is_incomplete <- grepl("unexpected end of input|unexpected end of line",
                          err_msg, ignore.case = TRUE)
 
-  # If input is natural language, return immediately — don't enter multiline
+  # If input is natural language, return immediately -- don't enter multiline
   if (is_incomplete && is_natural_language(first_line)) {
     return(first_line)
   }
 
-  # "INCOMPLETE_STRING" → apostrophe (NL) or unclosed R string (code)
+  # "INCOMPLETE_STRING" -> apostrophe (NL) or unclosed R string (code)
   if (!is_incomplete && grepl("INCOMPLETE_STRING", err_msg, ignore.case = TRUE)) {
     if (!is_natural_language(first_line)) {
       is_incomplete <- TRUE
@@ -600,7 +604,7 @@ process_with_agent <- function(user_input) {
     messages <- c(messages, agenticr_env$conversation)
   }
 
-  # Dynamic context: modes and task state (after conversation, before user input — preserves cache)
+  # Dynamic context: modes and task state (after conversation, before user input -- preserves cache)
   if (isTRUE(agenticr_env$repair_mode)) {
     messages <- c(messages, list(list(role = "user",
       content = "[MODE: CODE REPAIR] Fix the error. Return ONLY the corrected R code. No explanation.")))
@@ -762,7 +766,7 @@ process_with_agent <- function(user_input) {
           utils::flush.console()
         }
 
-        # Detect repeated identical errors — break error loops
+        # Detect repeated identical errors -- break error loops
         if (tool_name == "execute_r_code") {
           if (grepl("^Error:", tool_result %||% "")) {
             loop <- check_error_loop(recent_errors, tool_result)
@@ -981,7 +985,7 @@ SYSTEM_PROMPT <- paste0(
   "- Use the list_files tool to explore repository structure when needed.\n",
   "- Break down and manage your work with the task_write and task_update tools.\n",
   "  Use task_list to review current progress. Mark tasks completed immediately\n",
-  "  after finishing — do not batch multiple updates. Keep exactly one task\n",
+  "  after finishing -- do not batch multiple updates. Keep exactly one task\n",
   "  in_progress at a time.\n",
   "- When you notice a recurring pattern (same kind of request 3+ times) or the user ",
   "asks you to remember something, propose creating a reusable skill. ",
@@ -1015,7 +1019,7 @@ SYSTEM_PROMPT <- paste0(
 
   "R documentation and help:\n",
   "- Use the get_function_help tool to look up R function documentation. ",
-  "NEVER use help(), ?, or help.search() directly in execute_r_code — ",
+  "NEVER use help(), ?, or help.search() directly in execute_r_code -- ",
   "they open interactive pagers that block the session.\n",
   "- When user asks to find functions by topic, use your own knowledge ",
   "of base R and common packages. Do not use help.search().\n",

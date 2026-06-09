@@ -11,3 +11,7 @@
 ^docs$
 ^_pkgdown\.yml$
 ^pkgdown$
+eval/
+tests/testthat/Rplots.pdf
+.Rproj.user
+inst/config.yml

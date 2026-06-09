@@ -163,6 +163,7 @@ test_that("LLM: agent fixes object not found", {
 
 test_that("LLM: t-test request generates correct analysis", {
   skip_if_no_api()
+  skip_on_cran()
   messages <- list(list(role = "system", content = SYSTEM_PROMPT))
   messages <- c(messages, list(list(role = "user",
     content = "run a t-test comparing mpg between 4 and 8 cylinder cars in mtcars")))

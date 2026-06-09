@@ -21,6 +21,20 @@
 #' @name agenticr
 #' @keywords internal
 #' @importFrom utils tail globalVariables help
+#' @examples
+#' \dontrun{
+#' # Configure and start
+#' agentic_setup()
+#' agentic()
+#'
+#' # Or use directly
+#' agentic_config(provider = "deepseek")
+#' agentic_chat("what is the mean of mpg in mtcars?")
+#'
+#' # Resume a previous session
+#' agentic_sessions()
+#' agentic_resume("20250515_120000_a1b2c3d4")
+#' }
 "_PACKAGE"
 
 utils::globalVariables("output_lines")

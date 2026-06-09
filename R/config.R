@@ -209,6 +209,10 @@ agentic_config <- function(..., save = FALSE) {
 #'
 #' Guides user through API key and provider configuration interactively.
 #'
+#' @examples
+#' \dontrun{
+#' agentic_setup()
+#' }
 #' @export
 agentic_setup <- function() {
   cli::cli_h1("AgenticR Setup")

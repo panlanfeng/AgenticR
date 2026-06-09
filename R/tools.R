@@ -330,7 +330,7 @@ get_tool_definitions <- function() {
       type = "function",
       "function" = list(
         name = "task_update",
-        description = "Update a single task by its ID. Call immediately after finishing each task — do not batch updates.",
+        description = "Update a single task by its ID. Call immediately after finishing each task -- do not batch updates.",
         parameters = list(
           type = "object",
           properties = list(
@@ -458,7 +458,7 @@ get_tool_definitions <- function() {
 truncate_tool_result <- function(result, tool_name) {
   if (is.null(result) || nchar(result) == 0) return(result)
 
-  # read_file never truncated — LLM needs full file content
+  # read_file never truncated -- LLM needs full file content
   if (identical(tool_name, "read_file")) return(result)
 
   MAX_TOKENS <- 20000
@@ -774,7 +774,7 @@ tool_read_file <- function(file_path, offset = NULL, limit = NULL, pattern = NUL
     body <- c(
       paste0("[File: ", resolved, "]"),
       paste0("[Lines: ", total_lines, " total]"),
-      paste0("[Pattern: '", pattern, "' — ", length(matches), " matches showing ", length(shown), " lines with +/-", ctx, " context]"),
+      paste0("[Pattern: '", pattern, "' -- ", length(matches), " matches showing ", length(shown), " lines with +/-", ctx, " context]"),
       "",
       format_lines(match_lines, shown[1])
     )
@@ -900,27 +900,11 @@ tool_get_function_help <- function(name, package = NULL) {
     return("Error: No function name provided")
   }
 
-  h <- tryCatch({
-    if (is.null(package) || nchar(trimws(package)) == 0) {
-      suppressWarnings(do.call(help, list(topic = name, help_type = "text")))
-    } else {
-      suppressWarnings(do.call(help, list(topic = name, package = package, help_type = "text")))
-    }
-  }, error = function(e) NULL)
-
-  if (is.null(h) || length(h) == 0) {
-    return(paste0("No documentation found for '", name, "'"))
-  }
-
-  help_lines <- character(0)
-  con <- textConnection("help_lines", open = "w", local = TRUE)
-  tryCatch({
-    rd <- utils:::.getHelpFile(h)
-    tools::Rd2txt(rd, out = con)
-  }, error = function(e) {
-    cat("Error:", conditionMessage(e), "\n", file = con)
-  })
-  close(con)
+  help_lines <- tryCatch(
+    utils::capture.output(suppressWarnings(do.call(help,
+      list(topic = name %||% "", package = package, help_type = "text")))),
+    error = function(e) character(0)
+  )
 
   help_lines <- help_lines[nchar(trimws(help_lines)) > 0]
 
@@ -1297,7 +1281,7 @@ tool_task_update <- function(id, status, content = NULL) {
   t <- agenticr_env$tasks; n <- nrow(t)
   done <- sum(t$status == "completed"); cancelled <- sum(t$status == "cancelled")
   mark <- switch(status, completed = "[x]", in_progress = "[>]", cancelled = "[-]", "[ ]")
-  lines <- sprintf("Task #%d: %s → %s %s", id, old_status, mark, t$content[id])
+  lines <- sprintf("Task #%d: %s -> %s %s", id, old_status, mark, t$content[id])
   if (done == n - cancelled) {
     lines <- c(lines, "All tasks complete.")
   } else {
