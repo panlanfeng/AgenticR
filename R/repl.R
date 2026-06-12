@@ -35,7 +35,7 @@ agentic <- function(auto = TRUE, ...) {
   agenticr_env$session_id <- paste0(format(Sys.time(), "%Y%m%d_%H%M%S"), "_",
                                      paste(sample(c(0:9, letters[1:6]), 8, replace = TRUE), collapse = ""))
   agenticr_env$session_dir <- file.path(
-    Sys.getenv("HOME", unset = "~"), ".agenticr", "sessions", agenticr_env$session_id)
+    agenticr_dir(), "sessions", agenticr_env$session_id)
   dir.create(agenticr_env$session_dir, showWarnings = FALSE, recursive = TRUE)
   agenticr_env$outputs_dir <- file.path(agenticr_env$session_dir, "outputs")
   dir.create(agenticr_env$outputs_dir, showWarnings = FALSE, recursive = TRUE)
@@ -188,7 +188,7 @@ run_agentic_repl <- function() {
 #' @param ... Not used
 #' @export
 agentic_resume <- function(session_id, ...) {
-  sessions_dir <- file.path(Sys.getenv("HOME", unset = "~"), ".agenticr", "sessions")
+  sessions_dir <- file.path(agenticr_dir(), "sessions")
   session_dir <- file.path(sessions_dir, session_id)
 
   if (!dir.exists(session_dir)) {
@@ -308,7 +308,7 @@ agentic_resume <- function(session_id, ...) {
 #'
 #' @export
 agentic_sessions <- function() {
-  sessions_dir <- file.path(Sys.getenv("HOME", unset = "~"), ".agenticr", "sessions")
+  sessions_dir <- file.path(agenticr_dir(), "sessions")
   if (!dir.exists(sessions_dir)) {
     cli::cli_alert_info("No sessions directory found.")
     return(invisible())
@@ -1039,11 +1039,12 @@ SYSTEM_PROMPT <- paste0(
   "tell the user to activate it with /skill <name>.\n",
   "- When the user asks to add an MCP server, call:\n",
   "  agentic_mcp_add(name, command, args = character(0), env = list(), save = TRUE)\n",
-  "  Use save = TRUE to persist the config to ~/.agenticr/config.yml. ",
+  "  Use save = TRUE to persist the config. ",
   "  List current MCP servers with agentic_mcp().\n",
   "- When the user asks to change a config setting:\n",
   "  agentic_config(api_key = \"sk-...\", provider = \"deepseek\", save = TRUE)\n",
   "  Use save = TRUE to persist. Run without arguments to show current config.\n",
+  "  agenticr stores data in a platform-standard data directory.\n",
   "  For DeepSeek, reasoning_effort controls thinking depth: \"minimal\", \"low\", \"medium\", \"high\".\n\n",
 
   "Session management:\n",
@@ -1056,11 +1057,7 @@ SYSTEM_PROMPT <- paste0(
 #' @keywords internal
 load_agents_md <- function() {
   blocks <- character(0)
-  global_path <- file.path(
-    Sys.getenv("HOME", unset = "~"),
-    ".agenticr",
-    "AGENTS.md"
-  )
+  global_path <- file.path(agenticr_dir(), "AGENTS.md")
   if (file.exists(global_path)) {
     content <- tryCatch(
       paste(readLines(global_path, warn = FALSE), collapse = "\n"),

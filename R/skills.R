@@ -1,4 +1,4 @@
-#' Skills system — loadable prompt templates from ~/.agenticr/skills/
+#' Skills system — loadable prompt templates from agenticr's skills directory
 #'
 #' Skills use YAML frontmatter. Only frontmatter fields are loaded into
 #' the context. The full body is loaded on-demand via the load_skill_body tool.
@@ -11,7 +11,7 @@
 #'
 #' @keywords internal
 
-SKILLS_DIR <- file.path(Sys.getenv("HOME", unset = "~"), ".agenticr", "skills")
+SKILLS_DIR <- file.path(agenticr_dir(), "skills")
 
 #' Parse YAML frontmatter from a SKILL.md file
 #'
@@ -105,7 +105,7 @@ tool_load_skill_body <- function(name) {
   }
   result <- paste0("[Skill: ", s$name, "]\n", s$body, "\n[/Skill: ", s$name, "]")
 
-  skill_dir <- file.path(Sys.getenv("HOME", unset = "~"), ".agenticr", "skills", name)
+  skill_dir <- file.path(agenticr_dir(), "skills", name)
   mem_file <- file.path(skill_dir, "MEMORY.md")
   if (file.exists(mem_file)) {
     mem_content <- tryCatch(

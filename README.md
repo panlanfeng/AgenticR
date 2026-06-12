@@ -89,7 +89,9 @@ agentic_config(provider = "kimi", api_model = "kimi-k2-thinking")
 agentic_config(provider = "siliconflow", api_model = "deepseek-ai/DeepSeek-V4-Flash")
 ```
 
-### Config file (`~/.agenticr/config.yml`)
+### Config file
+
+Config is stored in agenticr's data directory (platform-specific: `~/Library/Application Support/agenticr/` on macOS, `%APPDATA%/agenticr/` on Windows, `~/.local/share/agenticr/` on Linux):
 
 ```yaml
 provider: "deepseek"
@@ -161,7 +163,7 @@ agentic_install_skill("https://raw.githubusercontent.com/mattpocock/skills/main/
 > /skill grill-me
 ```
 
-Skills are stored in `~/.agenticr/skills/<name>/SKILL.md`. Deactivate with `/skill:off <name>`.
+Skills are stored in agenticr's skills directory. Deactivate with `/skill:off <name>`.
 
 ## MCP (Model Context Protocol)
 
@@ -173,7 +175,7 @@ agentic_mcp_add("filesystem", "npx",
   save = TRUE)
 ```
 
-Or configure in `~/.agenticr/config.yml`:
+Or configure in the config file:
 
 ```yaml
 mcp_servers:
@@ -184,7 +186,7 @@ mcp_servers:
 
 ## Memory System
 
-AgenticR builds a memory file (`~/.agenticr/memory/MEMORY.md`) indexing session learnings.
+AgenticR builds a memory file in its data directory, indexing session learnings.
 Use `/memory` in the REPL to view current memory. The agent automatically records insights.
 
 ## Architecture

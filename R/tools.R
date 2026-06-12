@@ -1364,7 +1364,7 @@ tool_create_skill <- function(name, description, trigger = NULL, body) {
     return("Error: name, description, and body are required")
   }
   name <- tolower(gsub("[^a-z0-9-]", "-", name))
-  skill_dir <- file.path(Sys.getenv("HOME", unset = "~"), ".agenticr", "skills", name)
+  skill_dir <- file.path(agenticr_dir(), "skills", name)
   if (dir.exists(skill_dir)) {
     return(paste0("Skill '", name, "' already exists. Use update_skill_body to modify it."))
   }
@@ -1394,7 +1394,7 @@ tool_append_skill_memory <- function(name, content) {
   if (is.null(name) || is.null(content) || nchar(trimws(content)) == 0) {
     return("Error: name and non-empty content are required")
   }
-  skill_dir <- file.path(Sys.getenv("HOME", unset = "~"), ".agenticr", "skills", name)
+  skill_dir <- file.path(agenticr_dir(), "skills", name)
   if (!dir.exists(skill_dir)) {
     return(paste0("Skill '", name, "' not found. Create it first with create_skill."))
   }

@@ -5,7 +5,7 @@
 \usage{agentic_config(..., save = FALSE)}
 \arguments{
 \item{...}{Named arguments to set: \code{provider}, \code{api_key}, \code{api_base}, \code{api_model}, \code{temperature}, \code{max_tokens}, \code{reasoning_effort}, \code{max_turn_tokens}, \code{max_context_tokens}.}
-\item{save}{If TRUE, save configuration to \verb{~/.agenticr/config.yml}.}
+\item{save}{If TRUE, save configuration to \verb{agenticr config file}.}
 }
 \details{
 \code{reasoning_effort} controls DeepSeek's thinking depth. Valid values: \code{"minimal"}, \code{"low"}, \code{"medium"}, \code{"high"}. Default is \code{"medium"}.

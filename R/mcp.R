@@ -2,7 +2,7 @@
 #' via JSON-RPC over stdio.
 #'
 #' MCP servers provide additional tools that extend the agent's capabilities.
-#' Configure MCP servers in ~/.agenticr/config.yml under the 'mcp' key,
+#' Configure MCP servers in agenticr's config file under the 'mcp' key,
 #' or use agentic_install_mcp() / agentic_mcp_add().
 #'
 #' @keywords internal
@@ -190,7 +190,7 @@ agenticr_env$mcp_servers <- list()
 
 #' Connect to all configured MCP servers
 #'
-#' Reads MCP server config from ~/.agenticr/config.yml or adds manually.
+#' Reads MCP server config from agenticr's config file or adds manually.
 #'
 #' @keywords internal
 mcp_connect_all <- function() {

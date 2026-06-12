@@ -3,6 +3,7 @@
 ## Test environments
 - macOS (aarch64-apple-darwin23), R 4.6.0
 - Windows (x86_64-w64-mingw32, Windows Server 2022), R 4.6.0 — via win-builder
+- Linux (x86_64-unknown-linux-gnu), R 4.6.0
 
 ## R CMD check results
 0 ERRORs | 0 WARNINGs | 2 NOTEs
@@ -29,11 +30,14 @@ the package falls back to `grep` (if available) or a pure-R implementation using
 `list.files()` + `readLines()` + `grep()` with full PCRE support. No functionality
 is lost without ripgrep.
 
-### 4. Writes to home directory (~/.agenticr/)
+### 4. Data storage location
 
-`save_config()` creates `~/.agenticr/` for persistent configuration storage.
-This only runs when the user explicitly calls `agentic_config(..., save = TRUE)`.
-All other state (session logs, history, memory) uses per-session temp directories.
+Agenticr stores persistent data (config, sessions, skills, memory) in the
+platform-standard user data directory via `tools::R_user_dir("agenticr", "data")`.
+This resolves to `~/Library/Application Support/agenticr/` on macOS,
+`%APPDATA%/agenticr/` on Windows, and `~/.local/share/agenticr/` on Linux.
+No writes occur without explicit user action. Config is only persisted with
+`agentic_config(..., save = TRUE)`.
 
 ### 5. Non-deterministic tests
 

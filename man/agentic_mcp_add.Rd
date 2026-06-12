@@ -8,7 +8,7 @@
 \item{command}{Executable to run (e.g. \code{"npx"}, \code{"node"}, \code{"python"}).}
 \item{args}{Command-line arguments.}
 \item{env}{Environment variables as a named list.}
-\item{save}{If TRUE, persist the server config to \verb{~/.agenticr/config.yml}.}
+\item{save}{If TRUE, persist the server config to \verb{agenticr config file}.}
 }
 \value{Invisible.}
 \examples{\dontrun{agentic_mcp_add("search", "npx", args = c("-y", "mcp-server"))}}

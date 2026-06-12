@@ -397,8 +397,7 @@ run_compaction <- function(messages) {
 #' Extract persistent memory from conversation into MEMORY.md
 #'
 #' Uses a sub-agent with the SAME context prefix (maximizing cache hit rate)
-#' to extract persistent memory from the conversation. Stores result in
-#' ~/.agenticr/MEMORY.md. Never extracts discoverable info or file paths.
+#' to extract persistent memory from the conversation. Stores result in agenticr's memory directory.
 #'
 #' @keywords internal
 extract_memory <- function(messages) {

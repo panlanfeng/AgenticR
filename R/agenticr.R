@@ -41,6 +41,10 @@ utils::globalVariables("output_lines")
 
 `%||%` <- function(x, y) if (is.null(x)) y else x
 
+agenticr_dir <- function() {
+  tools::R_user_dir("agenticr", "data")
+}
+
 agenticr_env <- new.env(parent = emptyenv())
 
 agenticr_env$config <- NULL
@@ -49,11 +53,7 @@ agenticr_env$stable_summary <- NULL
 agenticr_env$context_injected <- FALSE
 agenticr_env$last_known_cwd <- ""
 agenticr_env$max_context_tokens <- 131072L
-agenticr_env$memory_dir <- file.path(
-  Sys.getenv("HOME", unset = "~"),
-  ".agenticr",
-  "memory"
-)
+agenticr_env$memory_dir <- file.path(agenticr_dir(), "memory")
 agenticr_env$memory_file <- file.path(
   agenticr_env$memory_dir,
   "MEMORY.md"

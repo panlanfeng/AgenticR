@@ -150,11 +150,11 @@ auto_detect_key <- function() {
 #' Configuration sources (in priority order):
 #' 1. Environment variables: AGENTICR_API_KEY, AGENTICR_API_BASE, AGENTICR_MODEL
 #' 2. Provider-specific env vars: DEEPSEEK_API_KEY, OPENAI_API_KEY, etc.
-#' 3. Config file: ~/.agenticr/config.yml
+#' 3. Config file: in agenticr's data directory
 #' 4. In-session: agentic_config(key = "value")
 #'
 #' @param ... Named arguments to set (api_key, api_base, api_model, provider, temperature, max_tokens)
-#' @param save If TRUE, save configuration to ~/.agenticr/config.yml
+#' @param save If TRUE, save configuration to agenticr's data directory
 #' @export
 agentic_config <- function(..., save = FALSE) {
   cfg <- agenticr_env$config
@@ -306,11 +306,7 @@ load_config <- function() {
   )
 
   # 1. Config file overrides defaults
-  config_file <- file.path(
-    Sys.getenv("HOME", unset = "~"),
-    ".agenticr",
-    "config.yml"
-  )
+  config_file <- file.path(agenticr_dir(), "config.yml")
 
   if (file.exists(config_file)) {
     file_cfg <- tryCatch(
@@ -353,7 +349,7 @@ load_config <- function() {
 #'
 #' @keywords internal
 save_config <- function(cfg) {
-  config_dir <- file.path(Sys.getenv("HOME", unset = "~"), ".agenticr")
+  config_dir <- agenticr_dir()
   if (!dir.exists(config_dir)) {
     dir.create(config_dir, recursive = TRUE, showWarnings = FALSE)
   }
