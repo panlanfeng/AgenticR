@@ -9,7 +9,8 @@ PROVIDER_PRESETS <- list(
     api_base = "https://api.deepseek.com",
     api_model = "deepseek-v4-pro",
     env_var = "DEEPSEEK_API_KEY",
-    max_context_tokens = 1048576
+    max_context_tokens = 1048576,
+    reasoning_effort = "medium"
   ),
   openai = list(
     name = "OpenAI",
@@ -176,6 +177,9 @@ agentic_config <- function(..., save = FALSE) {
         cfg$max_context_tokens <- preset$max_context_tokens
         agenticr_env$max_context_tokens <- as.integer(preset$max_context_tokens)
       }
+      if (!is.null(preset$reasoning_effort)) {
+        cfg$reasoning_effort <- preset$reasoning_effort
+      }
       env_var <- preset$env_var
       if (!is.na(env_var)) {
         key <- Sys.getenv(env_var, unset = "")
@@ -188,7 +192,7 @@ agentic_config <- function(..., save = FALSE) {
   }
 
   for (name in c("api_key", "api_base", "api_model", "temperature", "max_tokens",
-                  "max_turn_tokens", "max_context_tokens", "provider")) {
+                  "reasoning_effort", "max_turn_tokens", "max_context_tokens", "provider")) {
     if (!is.null(args[[name]])) {
       cfg[[name]] <- args[[name]]
     }
@@ -296,6 +300,7 @@ load_config <- function() {
     provider = "deepseek",
     max_tokens = 32768,
     temperature = 0.1,
+    reasoning_effort = "medium",
     max_turn_tokens = 64000,
     max_context_tokens = 1048576
   )
@@ -397,6 +402,9 @@ print.agenticr_config <- function(x, ...) {
   cli::cli_li("Model: {x$api_model}")
   cli::cli_li("Temperature: {x$temperature}")
   cli::cli_li("Max tokens: {x$max_tokens}")
+  if (!is.null(x$reasoning_effort)) {
+    cli::cli_li("Reasoning effort: {x$reasoning_effort}")
+  }
   cli::cli_li("Max turn tokens: {x$max_turn_tokens}")
   cli::cli_li("Context window: {x$max_context_tokens}")
 }

@@ -26,6 +26,10 @@ chat_completion <- function(messages, tools = NULL, stream = FALSE) {
     stream = stream
   )
 
+  if (!is.null(cfg$reasoning_effort) && nchar(cfg$reasoning_effort) > 0) {
+    body$reasoning_effort <- cfg$reasoning_effort
+  }
+
   if (!is.null(tools) && length(tools) > 0) {
     body$tools <- tools
   }
@@ -120,6 +124,10 @@ chat_completion_stream <- function(messages, tools = NULL,
     max_tokens = cfg$max_tokens,
     stream = TRUE
   )
+
+  if (!is.null(cfg$reasoning_effort) && nchar(cfg$reasoning_effort) > 0) {
+    body$reasoning_effort <- cfg$reasoning_effort
+  }
 
   if (!is.null(tools) && length(tools) > 0) {
     body$tools <- tools

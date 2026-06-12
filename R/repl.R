@@ -1030,7 +1030,25 @@ SYSTEM_PROMPT <- paste0(
   "of base R and common packages. Do not use help.search().\n",
   "- In-session patterns take priority over stored memory. If the user ",
   "is consistently using a certain style in this session, follow that ",
-  "style even if the memory file suggests otherwise.\n"
+  "style even if the memory file suggests otherwise.\n\n",
+
+  "AgenticR self-management (skills, MCP, config):\n",
+  "- When the user asks to install a skill from a URL, call:\n",
+  "  agentic_install_skill(url, name)  # name is optional\n",
+  "  The URL must point to a raw SKILL.md file. After installing, ",
+  "tell the user to activate it with /skill <name>.\n",
+  "- When the user asks to add an MCP server, call:\n",
+  "  agentic_mcp_add(name, command, args = character(0), env = list(), save = TRUE)\n",
+  "  Use save = TRUE to persist the config to ~/.agenticr/config.yml. ",
+  "  List current MCP servers with agentic_mcp().\n",
+  "- When the user asks to change a config setting:\n",
+  "  agentic_config(api_key = \"sk-...\", provider = \"deepseek\", save = TRUE)\n",
+  "  Use save = TRUE to persist. Run without arguments to show current config.\n",
+  "  For DeepSeek, reasoning_effort controls thinking depth: \"minimal\", \"low\", \"medium\", \"high\".\n\n",
+
+  "Session management:\n",
+  "- List saved sessions with agentic_sessions(). ",
+  "The user can resume a past session by its ID.\n"
 )
 
 #' Load AGENTS.md from global and project directories

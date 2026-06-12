@@ -48,7 +48,7 @@ At the prompt, type R code, natural language, or slash commands. Press Ctrl+C or
 
 ```r
 library(agenticr)
-agentic_config(provider = "deepseek")  # auto-detects DEEPSEEK_API_KEY env var
+agentic_config(provider = "deepseek")  # auto-detects DEEPSEEK_API_KEY env var, model deepseek-v4-pro
 agentic()
 ```
 
@@ -80,10 +80,13 @@ export QWEN_API_KEY="..."
 ### Provider switch
 
 ```r
-agentic_config(provider = "deepseek")
-agentic_config(provider = "openai")
-agentic_config(provider = "anthropic")
-agentic_config(provider = "glm")
+agentic_config(provider = "deepseek", api_model = "deepseek-v4-pro")
+agentic_config(provider = "deepseek", reasoning_effort = "high")  # minimal|low|medium|high
+agentic_config(provider = "openai", api_model = "gpt-5.5")
+agentic_config(provider = "anthropic", api_model = "claude-opus-4-7")
+agentic_config(provider = "glm", api_model = "glm-5.1")
+agentic_config(provider = "kimi", api_model = "kimi-k2-thinking")
+agentic_config(provider = "siliconflow", api_model = "deepseek-ai/DeepSeek-V4-Flash")
 ```
 
 ### Config file (`~/.agenticr/config.yml`)
@@ -96,6 +99,7 @@ api_model: "deepseek-v4-pro"
 temperature: 0.1
 max_tokens: 32768
 max_turn_tokens: 64000
+reasoning_effort: "medium"  # deepseek: minimal, low, medium, high
 ```
 
 ### In-session
