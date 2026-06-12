@@ -26,9 +26,7 @@ mcp_connect <- function(name, command, args = character(0), env = list(), timeou
   srv$tools <- list()
   srv$connected <- FALSE
   srv$process <- NULL
-  srv$pending <- new.env(parent = emptyenv())
   srv$next_id <- 1L
-  srv$lock <- FALSE
 
   cmd_env <- as.list(Sys.getenv())
   for (n in names(env)) {
@@ -56,7 +54,7 @@ mcp_connect <- function(name, command, args = character(0), env = list(), timeou
   result <- mcp_send_request(srv, "initialize", list(
     protocolVersion = "2024-11-05",
     capabilities = list(),
-    clientInfo = list(name = "AgenticR", version = "0.1.0")
+    clientInfo = list(name = "AgenticR", version = agenticr_env$version)
   ), timeout = timeout)
 
   if (is.null(result) || !is.null(result$error)) {
@@ -95,7 +93,6 @@ mcp_send_request <- function(srv, method, params, timeout = 10) {
   srv$process$write_input(paste0(req_json, "\n"))
 
   start <- Sys.time()
-  buf <- ""
   while (TRUE) {
     if (!srv$process$is_alive()) {
       return(NULL)

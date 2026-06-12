@@ -20,7 +20,7 @@ is_natural_language <- function(input) {
   # Fast path: common NL starters skip parse() entirely
   nl_starters <- c("what", "how", "can", "please", "show", "make", "create",
                    "find", "get", "list", "calculate", "plot", "analyze",
-                   "i ", "we ", "could", "would", "help", "explain", "run",
+                   "we", "could", "would", "help", "explain", "run",
                    "load", "compare", "summarize", "summarise", "describe",
                    "check", "tell")
   input_lower <- tolower(input)

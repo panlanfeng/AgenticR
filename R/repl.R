@@ -30,7 +30,6 @@ agentic <- function(auto = TRUE, ...) {
   agenticr_env$total_session_tokens <- 0L
   agenticr_env$active_skills <- list()
   agenticr_env$files_read <- list()
-  agenticr_env$todos <- list()
   agenticr_env$tasks <- list()
   agenticr_env$session_id <- paste0(format(Sys.time(), "%Y%m%d_%H%M%S"), "_",
                                      paste(sample(c(0:9, letters[1:6]), 8, replace = TRUE), collapse = ""))
@@ -251,7 +250,6 @@ agentic_resume <- function(session_id, ...) {
   agenticr_env$total_session_tokens <- 0L
   agenticr_env$active_skills <- list()
   agenticr_env$files_read <- list()
-  agenticr_env$todos <- list()
   agenticr_env$tasks <- list()
   agenticr_env$session_id <- session_id
   agenticr_env$session_dir <- session_dir
@@ -724,7 +722,7 @@ process_with_agent <- function(user_input) {
       utils::flush.console()
     }
 
-      if (length(tool_calls) > 0) {
+    if (length(tool_calls) > 0) {
       tool_names <- sapply(tool_calls, function(tc) tc$`function`$name)
       cat(cli::col_silver(paste0("[", paste(tool_names, collapse = ", "), "]\n")))
       utils::flush.console()
@@ -833,9 +831,6 @@ process_with_agent <- function(user_input) {
   utils::flush.console()
 }
 
-#' Write a turn to the session history file
-#'
-#' @keywords internal
 #' Load R command history for up-arrow recall
 #'
 #' @keywords internal
@@ -868,40 +863,6 @@ write_r_history <- function(code) {
     suppressWarnings(utils::loadhistory(agenticr_env$r_history_file)),
     error = function(e) NULL
   )
-}
-
-write_turn_history <- function(user_input, result) {
-  if (is.null(agenticr_env$history_file)) return()
-  agenticr_env$turn_counter <- agenticr_env$turn_counter + 1L
-
-  turn_type <- if (is.null(result)) "unknown" else if (isTRUE(result$nl)) "nl" else "r"
-
-  record <- list(
-    turn = agenticr_env$turn_counter,
-    timestamp = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
-    type = turn_type,
-    input = substr(user_input, 1, 500)
-  )
-
-  if (turn_type == "r") {
-    if (!is.null(result$output) && nchar(trimws(result$output)) > 0) {
-      record$output <- substr(result$output, 1, 2000)
-    }
-    if (!is.null(result$error)) {
-      record$error <- result$error
-    }
-  } else if (turn_type == "nl") {
-    if (!is.null(result$response) && nchar(result$response) > 0) {
-      record$response <- substr(result$response, 1, 2000)
-    }
-  }
-
-  line <- tryCatch(
-    jsonlite::toJSON(record, auto_unbox = TRUE, force = TRUE),
-    error = function(e) "{}"
-  )
-
-  cat(line, "\n", file = agenticr_env$history_file, append = TRUE)
 }
 
 #' Show current task list

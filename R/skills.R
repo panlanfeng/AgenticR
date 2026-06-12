@@ -166,7 +166,7 @@ agentic_skills <- function() {
   }
   cli::cli_h2("Installed Skills")
   for (s in skills) {
-    cli::cli_li("{.val {s$name}} ({nchar(s$content)} bytes)")
+    cli::cli_li("{.val {s$name}} ({nchar(s$body)} bytes)")
   }
   invisible()
 }

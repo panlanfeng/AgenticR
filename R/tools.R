@@ -867,7 +867,7 @@ tool_get_function_source <- function(name, package = NULL) {
 
   src <- tryCatch({
     if (!is.null(package) && nchar(trimws(package)) > 0) {
-      fn <- getExportedValue(package, name)
+      fn <- getFromNamespace(name, package)
     } else {
       fn <- get(name, envir = .GlobalEnv, inherits = TRUE)
     }
