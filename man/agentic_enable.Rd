@@ -6,4 +6,9 @@
 \arguments{
 \item{auto_process}{If TRUE, processes NL errors with the LLM agent.}
 }
-\examples{\dontrun{agentic_enable()}}
+\examples{
+agentic_enable()
+# Normal R code runs directly without involving the LLM
+mean(1:10)
+agentic_disable()
+}

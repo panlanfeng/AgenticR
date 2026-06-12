@@ -1,46 +1,21 @@
-# AgenticR — R package turning R console into AI Agent
+# AgenticR — AI Agent in Your R Console
 
-Rethink about R console and AI agent UI. Their user experiences are so similar. Do we really need two separte places, one for code and and one for LLM instructions? Isolating the two causes context loss for agent. AI is smart enough to know what should goes to LLM and what should go to interpretor.
+Rethink about R console and AI agent UI. Their user experiences are so similar. Do we really need two separate places, one for code and one for LLM instructions? Isolating the two causes context loss for the agent. AI is smart enough to know what should go to LLM and what should go to the interpreter.
 
-How about an AI agent directly live in R console. Uers type natural langauge or R code in the R console directly, no mode switch, no llm overhead for normal code. Have a try on AgenticR. AgenticR auto detects your intention: it executes R code in the console normal with no LLM overhead; it routes natural languages to the AI agent. AgenticR prioritizes normal code execution with no overhead; agent kicks in only when needed.
+AgenticR lets an AI agent live directly in your R console. Type natural language or R code in the same prompt — no mode switch, no LLM overhead for normal code. AgenticR auto-detects your intention: R code executes directly; natural language routes to the AI agent.
 
-Highlights:
-- Use any grammar to write code
-- Normal code still runs the same; natural language being translated and executed
-- Agent skills and MCP
-- AGENTS.md
-- Memory, auto learning from conversation
-- Context awareness, knows the code you ran
-- System reminder. AgenticR knows it if you switch working directory
+## Key Features
 
-
-```r
-> library(agenticr); agentic()
-> load mtcars  # this will run `data(mtcars)`
-> mean of mpg by cylinder in mtcars, then make a bar chart
-# Agent inspects the data, computes group means, creates a ggplot2 chart.
-
-> mtcars | group by wt | mean(x) for x in (carb, gear, am) # agenticR translates bad but reasonable grammar into legitimate code
-        > library(dplyr)
-        mtcars |>
-        group_by(wt) |>
-        summarise(across(c(carb, gear, am), mean))
-
-# Don't worry if you cannot remember the long list of function names
-> mtcars | gg_point(mpg, wt) + hline(y=wt), facet by cyl   # any grammar that makes sense
-
-
->library(ggplot2); df <- data.frame(x1 = 2.62, x2 = 3.57, y1 = 21.0, y2 = 15.0) #normal R code execute normally
-# the I forgot ggplot grammar. Just type the ideas
-> mtcars, df > ggplot + point(wt, mpg) + curve(x1, y1, xend=x2, yend=y2, color ="curve") + segment(x=x1, y=y1, xend=x2, yend=y2, color="segment")
-
-> load mtcars and write a shiny app to visualize the data # it will build and run the shinyApp
-
-> plot(mtcars$mpg, mtcars$wt) # normal R code executes normally with no llm overhead
-
-```
-
-
+- **Zero-overhead R execution** — valid R code runs directly, no LLM round-trip
+- **Any grammar** — type R, pseudo-code, or plain English; agenticr figures it out
+- **14 provider presets** with auto-detection from environment variables
+- **Agent tools** — R execution, file read/write/edit, repo search, data inspection
+- **Skills system** — installable prompt templates from URLs
+- **MCP support** — connect external tool servers via Model Context Protocol
+- **Error interceptor** — works in standard R console, not just the REPL
+- **Context-aware** — knows what code you ran, tracks conversation, auto-memory
+- **Streaming** — real-time token streaming with prompt cache optimization
+- **Per-session history** — command history scoped to each agentic session
 
 ## Installation
 
@@ -50,7 +25,7 @@ install.packages("remotes")
 remotes::install_github("panlanfeng/AgenticR")
 ```
 
-Or build from source: `R CMD build . && R CMD INSTALL agenticr_0.1.0.tar.gz`
+Or build from source: `R CMD build . && R CMD INSTALL agenticr_0.3.0.tar.gz`
 
 ## Quick Start
 
@@ -58,13 +33,16 @@ Or build from source: `R CMD build . && R CMD INSTALL agenticr_0.1.0.tar.gz`
 library(agenticr)
 
 # One-time setup (interactive wizard)
-agentic_setup() # or directly config it in the ~/.agenticr/config.yml
+agentic_setup()
 
-# Start the AI-assisted session
+# Or configure directly
+agentic_config(provider = "deepseek")
+
+# Start AI-assisted session
 agentic()
 ```
 
-At the prompt, type R code, natural language, or slash commands. Type `exit()` or press Ctrl+C to quit.
+At the prompt, type R code, natural language, or slash commands. Press Ctrl+C or Ctrl+D twice to exit.
 
 ### One-line setup with a provider
 
@@ -74,24 +52,32 @@ agentic_config(provider = "deepseek")  # auto-detects DEEPSEEK_API_KEY env var
 agentic()
 ```
 
+### Run a single query
+
+```r
+agentic_chat("mean of mpg by cylinder in mtcars")
+agentic_process("load iris and create a histogram of Sepal.Length")
+```
+
 ## Configuration
 
 ### Environment Variables (auto-detected)
 
-Set any of these env vars and AgenticR auto-detects the provider:
+Set any of these env vars — AgenticR auto-detects the provider:
 
 ```bash
-#any one of the following will work
 export DEEPSEEK_API_KEY="sk-..."
 export OPENAI_API_KEY="sk-..."
 export ANTHROPIC_API_KEY="sk-..."
 export GOOGLE_API_KEY="..."
 export GLM_API_KEY="..."
 export KIMI_API_KEY="..."
-# ... (see agentic_providers() for full list)
+export MISTRAL_API_KEY="..."
+export QWEN_API_KEY="..."
+# ... see agentic_providers() for full list
 ```
 
-### One-command provider switch
+### Provider switch
 
 ```r
 agentic_config(provider = "deepseek")
@@ -108,8 +94,8 @@ api_key: "sk-..."
 api_base: "https://api.deepseek.com"
 api_model: "deepseek-v4-pro"
 temperature: 0.1
-max_tokens: 4096
-max_rounds: 10
+max_tokens: 32768
+max_turn_tokens: 64000
 ```
 
 ### In-session
@@ -119,29 +105,52 @@ agentic_config(api_key = "sk-...", save = TRUE)
 agentic_config(temperature = 0.0)  # deterministic output
 ```
 
-
-## Features
-
-### Agent tools
+## Agent Tools
 
 | Tool | Purpose |
 |------|---------|
 | `execute_r_code` | Run R code in the current session |
 | `get_dataframe_info` | Inspect dataframe structure (cols, types, preview) |
 | `search_variables` | Find variables by name pattern |
-| `read_file` | Read file contents |
+| `read_file` | Read file contents (with line numbers, pattern search, large-file guard) |
+| `list_files` | List files in a directory, ignoring VCS and build artifacts |
 | `get_function_help` | Look up R function documentation |
-| `grep_search` | Search files with ripgrep or grep |
+| `grep_search` | Search files by content (uses ripgrep, grep, or pure-R fallback) |
 | `file_edit` | Replace a unique string in a file |
 | `file_write` | Create or overwrite a file |
-| `install_package` | Request CRAN package installation (user-confirmed) |
+| `task_write` | Create and maintain structured task lists |
+| `task_update` | Update task status |
+| `memory_write` | Write to persistent session memory |
 
-### Skills (opt-in prompt templates)
+## REPL Commands
 
-Install skills from URLs. Activate them explicitly with `/skill <name>`. Skills inject behavior instructions into the agent's context.
+| Command | Action |
+|---------|--------|
+| `;` prefix | Force natural language mode for this input |
+| `/help` | Show available commands |
+| `/config` | Show current configuration |
+| `/clear` | Clear conversation history |
+| `/vars` | List variables in global environment |
+| `/info <name>` | Show dataframe structure |
+| `/skill <name>` | Activate a skill for this session |
+| `/skill:off <name>` | Deactivate a skill |
+| `/skills` | List installed skills |
+| `/mcp` | Show connected MCP servers |
+| `exit()` or Ctrl+C twice | Quit agentic session |
+
+## Session Management
 
 ```r
-# Install from GitHub
+# Resume a previous session
+agentic_sessions()                            # list available sessions
+agentic_resume("20250515_120000_a1b2c3d4")    # resume by ID
+```
+
+## Skills (opt-in prompt templates)
+
+Install skills from URLs. Activate them explicitly with `/skill <name>`.
+
+```r
 agentic_install_skill("https://raw.githubusercontent.com/mattpocock/skills/main/skills/productivity/grill-me/SKILL.md")
 
 # In the REPL, activate when needed
@@ -150,9 +159,9 @@ agentic_install_skill("https://raw.githubusercontent.com/mattpocock/skills/main/
 
 Skills are stored in `~/.agenticr/skills/<name>/SKILL.md`. Deactivate with `/skill:off <name>`.
 
-### MCP (Model Context Protocol)
+## MCP (Model Context Protocol)
 
-Connect external tool servers via JSON-RPC over stdio. MCP tools are merged into the agent's tool list with `mcp_<server>_<tool>` names.
+Connect external tool servers via JSON-RPC over stdio.
 
 ```r
 agentic_mcp_add("filesystem", "npx",
@@ -169,23 +178,10 @@ mcp_servers:
     args: ["-y", "@anthropic/mcp-filesystem", "/path"]
 ```
 
+## Memory System
 
-## REPL Commands
-
-| Command | Action |
-|---------|--------|
-| `/help` | Show available commands |
-| `/config` | Show current configuration |
-| `/clear` | Clear conversation history |
-| `/vars` | List variables in global environment |
-| `/info <name>` | Show dataframe structure |
-| `/skill <name>` | Activate a skill for this session |
-| `/skill:off <name>` | Deactivate a skill |
-| `/skills` | List installed skills |
-| `/mcp` | Show connected MCP servers |
-| `exit()` or Ctrl+C | Quit agentic session |
-
-
+AgenticR builds a memory file (`~/.agenticr/memory/MEMORY.md`) indexing session learnings.
+Use `/memory` in the REPL to view current memory. The agent automatically records insights.
 
 ## Architecture
 
@@ -196,7 +192,7 @@ User types input at prompt
 read_complete_input() ← handles multi-line pipes, continuation
         │
         ▼
-is_natural_language() ← R indicators → R parser → NL heuristics
+is_natural_language() ← R indicators → parser → NL heuristics
         │
    ┌────┴────┐
    ▼         ▼
@@ -210,11 +206,10 @@ print()     ▼
    │    process tool_calls / inline code blocks
    │    execute in current R session
    │    display results
-   │    loop until done or token budget exceeded
+   │    loop until done or token budget exhausted
    │
    └──────→ back to prompt
 ```
-
 
 ## License
 

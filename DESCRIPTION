@@ -8,6 +8,7 @@ Description: An AI-powered assistant for the R console. Type natural language
     LLM agent for processing. Focused on statistical analysis, data
     transformation, and visualization.
 License: MIT + file LICENSE
+SystemRequirements: ripgrep (optional, for fast file search; install with 'winget install BurntSushi.ripgrep.MSVC' on Windows or see https://github.com/BurntSushi/ripgrep)
 Encoding: UTF-8
 Imports:
     httr,

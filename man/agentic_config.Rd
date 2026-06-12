@@ -7,4 +7,7 @@
 \item{...}{Named arguments to set}
 \item{save}{If TRUE, save to config file}
 }
-\examples{\dontrun{agentic_config(provider = "deepseek")}}
+\examples{
+cfg <- agentic_config()
+cat("Default provider:", cfg$provider, "\n")
+}

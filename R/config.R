@@ -354,8 +354,10 @@ save_config <- function(cfg) {
   }
   config_file <- file.path(config_dir, "config.yml")
   yaml::write_yaml(cfg, config_file)
-  Sys.chmod(config_file, "0600")
-  Sys.chmod(config_dir, "0700")
+  if (.Platform$OS.type == "unix") {
+    Sys.chmod(config_file, "0600")
+    Sys.chmod(config_dir, "0700")
+  }
   cli::cli_alert_success("Config saved to {.file {config_file}}")
 }
 

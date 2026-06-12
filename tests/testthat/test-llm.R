@@ -297,6 +297,7 @@ test_that("LLM: tool_calls/tool pairing stays valid across turns", {
 
 test_that("LLM: agent completes repo-analysis task without silent hang", {
   skip_if_no_api()
+  skip_on_cran()
   agenticr_env$context_injected <- FALSE
   agenticr_env$stable_summary <- NULL
   agenticr_env$conversation <- list()

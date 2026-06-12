@@ -936,9 +936,14 @@ tool_list_files <- function(path = NULL, pattern = NULL) {
                  "node_modules", "renv", "packrat", ".venv", "venv")
 
   recursive <- !is.null(pattern) && grepl("\\*\\*", pattern)
-  files <- list.files(resolved, pattern = pattern,
-                      recursive = recursive, all.files = TRUE,
-                      full.names = FALSE, include.dirs = TRUE)
+  files <- tryCatch(
+    list.files(resolved, pattern = pattern,
+               recursive = recursive, all.files = TRUE,
+               full.names = FALSE, include.dirs = TRUE),
+    error = function(e) list.files(resolved, recursive = recursive,
+                                   all.files = TRUE, full.names = FALSE,
+                                   include.dirs = TRUE)
+  )
 
   for (d in SKIP_DIRS) {
     files <- files[!grepl(paste0("(^|/)", gsub("\\.", "\\\\.", d), "($|/)"), files)]
@@ -991,7 +996,7 @@ tool_grep_search <- function(pattern, path = ".", context_lines = 2) {
   resolved <- path.expand(
     if (is.null(path) || nchar(trimws(path)) == 0) "." else path
   )
-  if (!grepl("^[/~]", resolved)) {
+  if (!grepl("^[/~]|[A-Za-z]:", resolved)) {
     resolved <- file.path(getwd(), resolved)
   }
 
@@ -999,15 +1004,41 @@ tool_grep_search <- function(pattern, path = ".", context_lines = 2) {
   if (nzchar(rg)) {
     cmd <- sprintf("rg --color=never -C %d %s %s 2>&1",
                    as.integer(context_lines), shQuote(pattern), shQuote(resolved))
-  } else {
+  } else if (nzchar(Sys.which("grep"))) {
     cmd <- sprintf("grep -rnH --color=never %s %s 2>&1",
                    shQuote(pattern), shQuote(resolved))
+  } else {
+    cmd <- NULL
   }
 
-  out <- tryCatch(
-    suppressWarnings(system(cmd, intern = TRUE, ignore.stderr = TRUE)),
-    error = function(e) character(0)
-  )
+  out <- if (is.null(cmd)) {
+    tryCatch({
+      files <- list.files(resolved, recursive = TRUE, full.names = TRUE)
+      grep_result <- c()
+      for (f in files) {
+        if (file.info(f)$isdir) next
+        if (file.info(f)$size > 1e6) next
+        lines <- readLines(f, warn = FALSE)
+        hits <- grep(pattern, lines, perl = TRUE)
+        if (length(hits) > 0) {
+          for (h in hits) {
+            grep_result <- c(grep_result,
+              paste0(f, ":", h, ":", lines[h]))
+          }
+        }
+      }
+      if (context_lines > 0 && length(grep_result) > 0) {
+        grep_result <- c(grep_result,
+          "[Note: context lines not available in pure-R fallback]")
+      }
+      grep_result
+    }, error = function(e) character(0))
+  } else {
+    tryCatch(
+      suppressWarnings(system(cmd, intern = TRUE, ignore.stderr = TRUE)),
+      error = function(e) character(0)
+    )
+  }
 
   if (length(out) == 0 || all(nchar(trimws(out)) == 0)) {
     return(paste0("No matches for '", pattern, "' in ", resolved))
@@ -1097,7 +1128,7 @@ tool_file_edit <- function(file_path, old_string, new_string, replace_all = FALS
   if (is.null(replace_all)) replace_all <- FALSE
 
   resolved <- path.expand(file_path)
-  if (!grepl("^[/~]", resolved)) {
+  if (!grepl("^[/~]|[A-Za-z]:", resolved)) {
     resolved <- file.path(getwd(), resolved)
   }
 
@@ -1160,7 +1191,7 @@ tool_file_write <- function(file_path, content) {
   }
 
   resolved <- path.expand(file_path)
-  if (!grepl("^[/~]", resolved)) {
+  if (!grepl("^[/~]|[A-Za-z]:", resolved)) {
     resolved <- file.path(getwd(), resolved)
   }
 

@@ -10,8 +10,6 @@ LLM agent for processing.
 }
 \author{Maintainer: Lanfeng Pan \email{panlanfeng@gmail.com}}
 \examples{
-\dontrun{
-agentic_setup()
-agentic()
-}
+agentic_providers()
+agentic_skills()
 }

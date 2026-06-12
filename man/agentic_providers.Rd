@@ -3,4 +3,6 @@
 \title{List available provider presets}
 \description{See package documentation for details.}
 \usage{agentic_providers()}
-\examples{\dontrun{agentic_providers()}}
+\examples{
+agentic_providers()
+}

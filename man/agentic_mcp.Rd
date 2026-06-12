@@ -3,4 +3,6 @@
 \title{List connected MCP servers}
 \description{See package documentation for details.}
 \usage{agentic_mcp()}
-\examples{\dontrun{agentic_mcp()}}
+\examples{
+agentic_mcp()
+}

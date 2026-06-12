@@ -852,7 +852,12 @@ load_r_history <- function() {
 #'
 #' @keywords internal
 enable_tab_completion <- function() {
-  rc.settings(ipck = TRUE, files = TRUE, func = TRUE, args = TRUE)
+  if (.Platform$OS.type == "unix") {
+    tryCatch(
+      rc.settings(ipck = TRUE, files = TRUE, func = TRUE, args = TRUE),
+      warning = function(w) NULL
+    )
+  }
 }
 write_r_history <- function(code) {
   if (is.null(agenticr_env$r_history_file)) return()
@@ -1283,8 +1288,9 @@ agentic_enable <- function(auto_process = TRUE) {
     }
   )
 
+  mode_str <- if (auto_process) " (auto-process mode)" else " (suggestion mode)"
   cli::cli_alert_success(
-    "AgenticR error interceptor enabled{cli::if(auto_process, ' (auto-process mode)')}."
+    "AgenticR error interceptor enabled{mode_str}."
   )
   invisible()
 }
