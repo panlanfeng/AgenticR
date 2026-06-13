@@ -98,15 +98,14 @@ mcp_send_request <- function(srv, method, params, timeout = 10) {
       return(NULL)
     }
     srv$process$poll_io(100)
-    if (srv$process$can_read()) {
-      chunk <- srv$process$read_output_lines(1)
-      if (length(chunk) == 0) next
+    chunk <- srv$process$read_output_lines(1)
+    if (length(chunk) > 0) {
       line <- chunk[1]
       response <- tryCatch(
         jsonlite::fromJSON(line, simplifyVector = FALSE),
         error = function(e) NULL
       )
-      if (!is.null(response) && identical(response$id, req_id)) {
+      if (!is.null(response) && isTRUE(response$id == req_id)) {
         return(response)
       }
     }
@@ -145,15 +144,18 @@ mcp_tools <- function(srv) {
   result <- list()
   for (t in srv$tools) {
     params <- t$inputSchema %||% list()
+    required <- params$required %||% list()
+    param_def <- list(
+      type = "object",
+      properties = params$properties %||% list()
+    )
+    if (length(required) > 0) param_def$required <- required
     result <- c(result, list(list(
       type = "function",
       "function" = list(
         name = paste0("mcp_", srv$name, "_", t$name),
         description = t$description %||% paste0("MCP tool: ", srv$name, "/", t$name),
-        parameters = list(
-          type = "object",
-          properties = params$properties %||% list()
-        )
+        parameters = param_def
       )
     )))
   }
