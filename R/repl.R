@@ -66,21 +66,9 @@ agentic <- function(auto = TRUE, ...) {
   enable_tab_completion()
 
   cfg <- tryCatch(get_api_config(), error = function(e) {
-    cli::cli_alert_danger("{.val {e$message}}")
-    cli::cli_text("")
-    cli::cli_text("Set up your API key now:")
-    cli::cli_text("  {.code agentic_config(api_key = \"sk-...\", save = TRUE)}")
-    cat("\nEnter your API key (or press Enter to exit): ")
-    key <- readline()
-    if (key == "") return(invisible())
-    agentic_config(api_key = key, save = TRUE)
-    cli::cli_text("")
-    cfg2 <- tryCatch(get_api_config(), error = function(e2) {
-      cli::cli_alert_danger("Still no valid key. Exiting.")
-      NULL
-    })
-    if (is.null(cfg2)) return(invisible())
-    cfg2
+    cli::cli_alert_danger("No API key configured.")
+    cli::cli_text("Run {.code agentic_setup()} to configure, or set an environment variable.")
+    NULL
   })
   if (is.null(cfg)) return(invisible())
 

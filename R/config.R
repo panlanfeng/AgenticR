@@ -9,6 +9,7 @@ PROVIDER_PRESETS <- list(
     api_base = "https://api.deepseek.com",
     api_model = "deepseek-v4-pro",
     env_var = "DEEPSEEK_API_KEY",
+    max_tokens = 32768,
     max_context_tokens = 1048576,
     reasoning_effort = "medium"
   ),
@@ -17,6 +18,7 @@ PROVIDER_PRESETS <- list(
     api_base = "https://api.openai.com/v1",
     api_model = "gpt-5.5",
     env_var = "OPENAI_API_KEY",
+    max_tokens = 16384,
     max_context_tokens = 131072
   ),
   anthropic = list(
@@ -24,6 +26,7 @@ PROVIDER_PRESETS <- list(
     api_base = "https://api.anthropic.com/v1",
     api_model = "claude-opus-4-7",
     env_var = "ANTHROPIC_API_KEY",
+    max_tokens = 32768,
     max_context_tokens = 200000
   ),
   google = list(
@@ -31,6 +34,7 @@ PROVIDER_PRESETS <- list(
     api_base = "https://generativelanguage.googleapis.com/v1beta/openai",
     api_model = "gemini-3.1-pro-preview",
     env_var = "GOOGLE_API_KEY",
+    max_tokens = 8192,
     max_context_tokens = 1048576
   ),
   glm = list(
@@ -38,6 +42,7 @@ PROVIDER_PRESETS <- list(
     api_base = "https://open.bigmodel.cn/api/paas/v4",
     api_model = "glm-5.1",
     env_var = "GLM_API_KEY",
+    max_tokens = 16384,
     max_context_tokens = 131072
   ),
   kimi = list(
@@ -45,6 +50,7 @@ PROVIDER_PRESETS <- list(
     api_base = "https://api.moonshot.cn/v1",
     api_model = "kimi-k2-thinking",
     env_var = "KIMI_API_KEY",
+    max_tokens = 16384,
     max_context_tokens = 131072
   ),
   minimax = list(
@@ -52,6 +58,7 @@ PROVIDER_PRESETS <- list(
     api_base = "https://api.minimax.chat/v1",
     api_model = "MiniMax-M2.7",
     env_var = "MINIMAX_API_KEY",
+    max_tokens = 16384,
     max_context_tokens = 1048576
   ),
   qwen = list(
@@ -59,6 +66,7 @@ PROVIDER_PRESETS <- list(
     api_base = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
     api_model = "qwen3.6-plus",
     env_var = "QWEN_API_KEY",
+    max_tokens = 16384,
     max_context_tokens = 131072
   ),
   xai = list(
@@ -66,6 +74,7 @@ PROVIDER_PRESETS <- list(
     api_base = "https://api.x.ai/v1",
     api_model = "grok-4.3",
     env_var = "XAI_API_KEY",
+    max_tokens = 16384,
     max_context_tokens = 1048576
   ),
   openrouter = list(
@@ -73,6 +82,7 @@ PROVIDER_PRESETS <- list(
     api_base = "https://openrouter.ai/api/v1",
     api_model = "openrouter/auto",
     env_var = "OPENROUTER_API_KEY",
+    max_tokens = 16384,
     max_context_tokens = 131072
   ),
   siliconflow = list(
@@ -80,6 +90,7 @@ PROVIDER_PRESETS <- list(
     api_base = "https://api.siliconflow.cn/v1",
     api_model = "deepseek-ai/DeepSeek-V4-Flash",
     env_var = "SILICONFLOW_API_KEY",
+    max_tokens = 16384,
     max_context_tokens = 131072
   ),
   perplexity = list(
@@ -87,6 +98,7 @@ PROVIDER_PRESETS <- list(
     api_base = "https://api.perplexity.ai",
     api_model = "sonar-pro",
     env_var = "PERPLEXITY_API_KEY",
+    max_tokens = 16384,
     max_context_tokens = 131072
   ),
   mistral = list(
@@ -94,6 +106,7 @@ PROVIDER_PRESETS <- list(
     api_base = "https://api.mistral.ai/v1",
     api_model = "mistral-large-2512",
     env_var = "MISTRAL_API_KEY",
+    max_tokens = 16384,
     max_context_tokens = 131072
   ),
   bedrock = list(
@@ -101,6 +114,7 @@ PROVIDER_PRESETS <- list(
     api_base = "https://bedrock-runtime.us-east-1.amazonaws.com",
     api_model = "anthropic.claude-opus-4-7-v1:0",
     env_var = "AWS_ACCESS_KEY_ID",
+    max_tokens = 32768,
     max_context_tokens = 200000
   ),
   custom = list(
@@ -108,6 +122,7 @@ PROVIDER_PRESETS <- list(
     api_base = "",
     api_model = "",
     env_var = NA_character_,
+    max_tokens = 16384,
     max_context_tokens = 131072
   )
 )
@@ -172,6 +187,9 @@ agentic_config <- function(..., save = FALSE) {
         }
         if (nchar(preset$api_model) > 0) {
           cfg$api_model <- preset$api_model
+        }
+        if (!is.null(preset$max_tokens)) {
+          cfg$max_tokens <- preset$max_tokens
         }
       }
       cfg$provider <- provider
@@ -281,10 +299,19 @@ agentic_setup <- function() {
   model <- readline(paste0("Model [", preset$api_model, "]: "))
   if (model == "") model <- preset$api_model
 
+  default_max_tokens <- preset$max_tokens %||% 16384
+  max_tokens <- readline(paste0("Max output tokens [", default_max_tokens, "]: "))
+  if (max_tokens == "") {
+    max_tokens <- default_max_tokens
+  } else {
+    max_tokens <- as.integer(max_tokens)
+  }
+
   agentic_config(
     api_key = api_key,
     api_base = preset$api_base,
     api_model = model,
+    max_tokens = max_tokens,
     provider = provider,
     save = TRUE
   )
@@ -304,7 +331,6 @@ load_config <- function() {
     api_base = "https://api.deepseek.com",
     api_model = "deepseek-v4-pro",
     provider = "deepseek",
-    max_tokens = 32768,
     temperature = 0.1,
     max_turn_tokens = 64000,
     max_context_tokens = 1048576
@@ -352,6 +378,9 @@ load_config <- function() {
   if (!is.null(preset)) {
     if (!is.null(preset$reasoning_effort) && is.null(cfg$reasoning_effort)) {
       cfg$reasoning_effort <- preset$reasoning_effort
+    }
+    if (!is.null(preset$max_tokens) && is.null(cfg$max_tokens)) {
+      cfg$max_tokens <- preset$max_tokens
     }
     if (!is.null(preset$max_context_tokens)) {
       cfg$max_context_tokens <- preset$max_context_tokens
