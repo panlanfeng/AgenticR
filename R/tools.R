@@ -852,11 +852,31 @@ tool_get_function_help <- function(name, package = NULL) {
     return("Error: No function name provided")
   }
 
+  pager_file <- tempfile("agenticr_help_")
+  old_opts <- options(
+    pager = function(files, header, title, delete.file) {
+      if (!is.null(files) && file.exists(files)) {
+        writeLines(readLines(files, warn = FALSE), pager_file)
+      }
+    },
+    help_type = "text",
+    browser = function(url) message("Browser suppressed: ", url)
+  )
+  on.exit({
+    options(old_opts)
+    if (file.exists(pager_file)) file.remove(pager_file)
+  })
+
   help_lines <- tryCatch(
     utils::capture.output(suppressWarnings(do.call(help,
       list(topic = name %||% "", package = package, help_type = "text")))),
     error = function(e) character(0)
   )
+
+  if (file.exists(pager_file) && file.info(pager_file)$size > 0) {
+    pager_lines <- readLines(pager_file, warn = FALSE)
+    help_lines <- c(pager_lines, help_lines)
+  }
 
   help_lines <- help_lines[nchar(trimws(help_lines)) > 0]
 
