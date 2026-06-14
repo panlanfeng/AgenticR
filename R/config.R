@@ -168,7 +168,7 @@ auto_detect_key <- function() {
 #' 3. Config file: in agenticr's data directory
 #' 4. In-session: agentic_config(key = "value")
 #'
-#' @param ... Named arguments to set (api_key, api_base, api_model, provider, temperature, max_tokens)
+#' @param ... Named arguments to set (api_key, api_base, api_model, provider, temperature, max_tokens, reasoning_effort, max_turn_tokens, max_context_tokens)
 #' @param save If TRUE, save configuration to agenticr's data directory
 #' @export
 agentic_config <- function(..., save = FALSE) {
@@ -236,6 +236,7 @@ agentic_config <- function(..., save = FALSE) {
 #' Interactive setup wizard
 #'
 #' Guides user through API key and provider configuration interactively.
+#' Walks through provider selection, API key entry, model name, and max tokens.
 #'
 #' @examples
 #' \dontrun{

@@ -16,7 +16,9 @@ api_base: "https://api.deepseek.com"
 # Model name (auto-set by provider)
 api_model: "deepseek-v4-pro"
 
-# Generation parameters
+# Generation parameters (auto-set from provider preset when switching)
 temperature: 0.1
-max_tokens: 4096
-max_rounds: 10
+max_tokens: 32768
+max_turn_tokens: 64000
+max_context_tokens: 1048576
+reasoning_effort: "medium"
