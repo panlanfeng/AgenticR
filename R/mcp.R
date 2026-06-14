@@ -50,10 +50,12 @@ mcp_connect <- function(name, command, args = character(0), env = list(), timeou
 
   if (is.null(srv$process)) return(NULL)
 
+  empty_obj <- structure(list(), names = character(0))
+
   # Initialize
   result <- mcp_send_request(srv, "initialize", list(
     protocolVersion = "2024-11-05",
-    capabilities = list(),
+    capabilities = empty_obj,
     clientInfo = list(name = "AgenticR", version = agenticr_env$version)
   ), timeout = timeout)
 
@@ -65,10 +67,10 @@ mcp_connect <- function(name, command, args = character(0), env = list(), timeou
   }
 
   # Send initialized notification
-  mcp_send_notification(srv, "notifications/initialized", list())
+  mcp_send_notification(srv, "notifications/initialized", empty_obj)
 
   # Discover tools
-  tools_result <- mcp_send_request(srv, "tools/list", list(), timeout = timeout)
+  tools_result <- mcp_send_request(srv, "tools/list", empty_obj, timeout = timeout)
   if (is.null(tools_result) || !is.null(tools_result$error)) {
     cli::cli_alert_warning("MCP '{name}' tools/list failed")
     mcp_disconnect(srv)
