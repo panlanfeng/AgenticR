@@ -1,0 +1,13 @@
+# R package build artifacts
+*.tar.gz
+*.Rcheck/
+
+# macOS
+.DS_Store
+
+# Editor / IDE folders
+.claude/
+.opencode/
+.cursor/
+.vscode/
+.Rproj.user/

@@ -166,13 +166,15 @@ agentic_config <- function(..., save = FALSE) {
     if (is.null(preset)) {
       cli::cli_alert_warning("Unknown provider '{provider}'. Use one of: {.val {names(PROVIDER_PRESETS)}}")
     } else {
+      if (provider != cfg$provider) {
+        if (nchar(preset$api_base) > 0) {
+          cfg$api_base <- preset$api_base
+        }
+        if (nchar(preset$api_model) > 0) {
+          cfg$api_model <- preset$api_model
+        }
+      }
       cfg$provider <- provider
-      if (nchar(preset$api_base) > 0) {
-        cfg$api_base <- preset$api_base
-      }
-      if (nchar(preset$api_model) > 0) {
-        cfg$api_model <- preset$api_model
-      }
       if (!is.null(preset$max_context_tokens)) {
         cfg$max_context_tokens <- preset$max_context_tokens
         agenticr_env$max_context_tokens <- as.integer(preset$max_context_tokens)

@@ -15,3 +15,8 @@ eval/
 tests/testthat/Rplots.pdf
 .Rproj.user
 inst/config.yml
+^\.claude$
+^\.opencode$
+^\.cursor$
+^\.vscode$
+^\.gitignore$
