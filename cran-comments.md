@@ -14,14 +14,14 @@
 
 First submission. "agenticr" is the intended package name (a portmanteau: "agentic" + "R"). Not a misspelling.
 
-### 2. Assignments to global environment
+### 2. Interactive pager prevention via options()
 
-The package monkey-patches `help()`, `help.search()`, `?`, and `View()` in `.GlobalEnv` during
-`agentic_enable()` and restores them on `agentic_disable()`. This is the error-interceptor
-mechanism: when a user types natural language at the R console, it triggers an error which
-the interceptor routes to the LLM agent. The assignments are scoped to the interceptor
-lifetime and fully restored. This design is analogous to how `debugger.lines` and other
-R debugging tools modify the global error handler.
+The package prevents interactive pagers from blocking the headless agent session by
+setting `options(pager = ..., help_type = "text", browser = ...)` during code execution
+in `tool_execute_r_code()`. The custom pager writes output to a temp file instead of
+launching an interactive viewer. Options are restored in `on.exit()`. No functions
+are assigned to `.GlobalEnv` and no `attach()` is used — the search path and global
+environment remain untouched.
 
 ### 3. SystemRequirements: ripgrep (optional)
 

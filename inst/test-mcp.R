@@ -1,13 +1,24 @@
 #!/usr/bin/env Rscript
 # Test MCP server install and usage
+#
+# Run from the repo root: Rscript inst/test-mcp.R
 
 library(jsonlite)
 library(cli)
 library(yaml)
 library(processx)
 
+# Find repo root (parent of inst/)
+root <- if (dir.exists("R") && dir.exists("inst")) {
+  getwd()
+} else if (dir.exists("../R") && dir.exists("../inst")) {
+  dirname(getwd())
+} else {
+  stop("Run from agenticr repo root or inst/ directory")
+}
+
 # --- Setup: source package code ---
-srcdir <- file.path(getwd(), "R")
+srcdir <- file.path(root, "R")
 source(file.path(srcdir, "agenticr.R"))  # %||%, agenticr_dir, agenticr_env
 source(file.path(srcdir, "config.R"))    # load_config, save_config
 source(file.path(srcdir, "mcp.R"))        # MCP functions
@@ -19,7 +30,7 @@ assign("config", cfg, envir = agenticr_env)
 agenticr_env$mcp_servers <- list()
 
 cat("\n=== Test 1: mcp_connect (direct) ===\n")
-server_script <- file.path(getwd(), "tests/mcp_echo_server.py")
+server_script <- file.path(root, "tests/mcp_echo_server.py")
 srv <- mcp_connect("echo", "python3", c(server_script), timeout = 10)
 
 if (is.null(srv)) {

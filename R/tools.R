@@ -548,57 +548,9 @@ tool_execute_r_code <- function(code) {
     help_type = "text",
     browser = function(url) message("Browser suppressed: ", url)
   )
-  old_view <- if (exists("View", envir = .GlobalEnv)) get("View", envir = .GlobalEnv) else NULL
-  assign("View", function(x, title) {
-    if (is.data.frame(x)) print(utils::head(x, 20)) else print(x)
-  }, envir = .GlobalEnv)
-
-  # Override help.search / help / ? to prevent interactive pagers blocking the session
-  old_help_search <- if (exists("help.search", envir = .GlobalEnv, inherits = FALSE)) {
-    get("help.search", envir = .GlobalEnv)
-  } else NULL
-  old_help_fn <- if (exists("help", envir = .GlobalEnv, inherits = FALSE)) {
-    get("help", envir = .GlobalEnv)
-  } else NULL
-  old_q_op <- if (exists("?", envir = .GlobalEnv, inherits = FALSE)) {
-    get("?", envir = .GlobalEnv)
-  } else NULL
-  help_disabled_msg <- paste0(
-    "Direct use of help(), help.search(), or ? is blocked in agenticr ",
-    "to prevent interactive pagers. Use the get_function_help tool instead."
-  )
-  assign("help.search", function(pattern, ...) {
-    stop(help_disabled_msg)
-  }, envir = .GlobalEnv)
-  assign("help", function(topic, ...) {
-    stop(help_disabled_msg)
-  }, envir = .GlobalEnv)
-  assign("?", function(e1, e2) {
-    stop(help_disabled_msg)
-  }, envir = .GlobalEnv)
 
   on.exit({
     options(old_opts)
-    if (!is.null(old_view)) {
-      assign("View", old_view, envir = .GlobalEnv)
-    } else {
-      rm("View", envir = .GlobalEnv)
-    }
-    if (!is.null(old_help_search)) {
-      assign("help.search", old_help_search, envir = .GlobalEnv)
-    } else {
-      rm("help.search", envir = .GlobalEnv)
-    }
-    if (!is.null(old_help_fn)) {
-      assign("help", old_help_fn, envir = .GlobalEnv)
-    } else {
-      rm("help", envir = .GlobalEnv)
-    }
-    if (!is.null(old_q_op)) {
-      assign("?", old_q_op, envir = .GlobalEnv)
-    } else {
-      rm("?", envir = .GlobalEnv)
-    }
     if (file.exists(pager_file)) file.remove(pager_file)
   }, add = TRUE)
 
