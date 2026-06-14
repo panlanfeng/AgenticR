@@ -317,7 +317,7 @@ test_that("load_config returns valid config structure", {
   })
   cfg <- load_config()
   expect_type(cfg, "list")
-  expect_true(all(c("api_base", "api_model", "temperature", "max_tokens") %in% names(cfg)))
+  expect_true(all(c("base_url", "model", "temperature", "max_tokens") %in% names(cfg)))
 })
 
 test_that("agentic_config updates in-memory config", {

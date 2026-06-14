@@ -6,8 +6,8 @@
 PROVIDER_PRESETS <- list(
   deepseek = list(
     name = "DeepSeek",
-    api_base = "https://api.deepseek.com",
-    api_model = "deepseek-v4-pro",
+    base_url = "https://api.deepseek.com",
+    model = "deepseek-v4-pro",
     env_var = "DEEPSEEK_API_KEY",
     max_tokens = 32768,
     max_context_tokens = 1048576,
@@ -15,112 +15,112 @@ PROVIDER_PRESETS <- list(
   ),
   openai = list(
     name = "OpenAI",
-    api_base = "https://api.openai.com/v1",
-    api_model = "gpt-5.5",
+    base_url = "https://api.openai.com/v1",
+    model = "gpt-5.5",
     env_var = "OPENAI_API_KEY",
     max_tokens = 16384,
     max_context_tokens = 131072
   ),
   anthropic = list(
     name = "Anthropic",
-    api_base = "https://api.anthropic.com/v1",
-    api_model = "claude-opus-4-7",
+    base_url = "https://api.anthropic.com/v1",
+    model = "claude-opus-4-7",
     env_var = "ANTHROPIC_API_KEY",
     max_tokens = 32768,
     max_context_tokens = 200000
   ),
   google = list(
     name = "Google Gemini",
-    api_base = "https://generativelanguage.googleapis.com/v1beta/openai",
-    api_model = "gemini-3.1-pro-preview",
+    base_url = "https://generativelanguage.googleapis.com/v1beta/openai",
+    model = "gemini-3.1-pro-preview",
     env_var = "GOOGLE_API_KEY",
     max_tokens = 8192,
     max_context_tokens = 1048576
   ),
   glm = list(
     name = "Zhipu GLM",
-    api_base = "https://open.bigmodel.cn/api/paas/v4",
-    api_model = "glm-5.1",
+    base_url = "https://open.bigmodel.cn/api/paas/v4",
+    model = "glm-5.1",
     env_var = "GLM_API_KEY",
     max_tokens = 16384,
     max_context_tokens = 131072
   ),
   kimi = list(
     name = "Moonshot Kimi",
-    api_base = "https://api.moonshot.cn/v1",
-    api_model = "kimi-k2-thinking",
+    base_url = "https://api.moonshot.cn/v1",
+    model = "kimi-k2-thinking",
     env_var = "KIMI_API_KEY",
     max_tokens = 16384,
     max_context_tokens = 131072
   ),
   minimax = list(
     name = "MiniMax",
-    api_base = "https://api.minimax.chat/v1",
-    api_model = "MiniMax-M2.7",
+    base_url = "https://api.minimax.chat/v1",
+    model = "MiniMax-M2.7",
     env_var = "MINIMAX_API_KEY",
     max_tokens = 16384,
     max_context_tokens = 1048576
   ),
   qwen = list(
     name = "Alibaba Qwen",
-    api_base = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-    api_model = "qwen3.6-plus",
+    base_url = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+    model = "qwen3.6-plus",
     env_var = "QWEN_API_KEY",
     max_tokens = 16384,
     max_context_tokens = 131072
   ),
   xai = list(
     name = "xAI",
-    api_base = "https://api.x.ai/v1",
-    api_model = "grok-4.3",
+    base_url = "https://api.x.ai/v1",
+    model = "grok-4.3",
     env_var = "XAI_API_KEY",
     max_tokens = 16384,
     max_context_tokens = 1048576
   ),
   openrouter = list(
     name = "OpenRouter",
-    api_base = "https://openrouter.ai/api/v1",
-    api_model = "openrouter/auto",
+    base_url = "https://openrouter.ai/api/v1",
+    model = "openrouter/auto",
     env_var = "OPENROUTER_API_KEY",
     max_tokens = 16384,
     max_context_tokens = 131072
   ),
   siliconflow = list(
     name = "SiliconFlow",
-    api_base = "https://api.siliconflow.cn/v1",
-    api_model = "deepseek-ai/DeepSeek-V4-Flash",
+    base_url = "https://api.siliconflow.cn/v1",
+    model = "deepseek-ai/DeepSeek-V4-Flash",
     env_var = "SILICONFLOW_API_KEY",
     max_tokens = 16384,
     max_context_tokens = 131072
   ),
   perplexity = list(
     name = "Perplexity",
-    api_base = "https://api.perplexity.ai",
-    api_model = "sonar-pro",
+    base_url = "https://api.perplexity.ai",
+    model = "sonar-pro",
     env_var = "PERPLEXITY_API_KEY",
     max_tokens = 16384,
     max_context_tokens = 131072
   ),
   mistral = list(
     name = "Mistral AI",
-    api_base = "https://api.mistral.ai/v1",
-    api_model = "mistral-large-2512",
+    base_url = "https://api.mistral.ai/v1",
+    model = "mistral-large-2512",
     env_var = "MISTRAL_API_KEY",
     max_tokens = 16384,
     max_context_tokens = 131072
   ),
   bedrock = list(
     name = "Amazon Bedrock",
-    api_base = "https://bedrock-runtime.us-east-1.amazonaws.com",
-    api_model = "anthropic.claude-opus-4-7-v1:0",
+    base_url = "https://bedrock-runtime.us-east-1.amazonaws.com",
+    model = "anthropic.claude-opus-4-7-v1:0",
     env_var = "AWS_ACCESS_KEY_ID",
     max_tokens = 32768,
     max_context_tokens = 200000
   ),
   custom = list(
     name = "Custom",
-    api_base = "",
-    api_model = "",
+    base_url = "",
+    model = "",
     env_var = NA_character_,
     max_tokens = 16384,
     max_context_tokens = 131072
@@ -130,7 +130,7 @@ PROVIDER_PRESETS <- list(
 #' Auto-detect API key from well-known environment variables
 #'
 #' Checks provider-specific env vars first, then AGENTICR_API_KEY.
-#' Returns list(api_key, api_base, api_model, provider_name) or NULL.
+#' Returns list(api_key, base_url, model, provider_name) or NULL.
 #'
 #' @keywords internal
 auto_detect_key <- function() {
@@ -142,8 +142,8 @@ auto_detect_key <- function() {
     if (nchar(value) > 0) {
       return(list(
         api_key = value,
-        api_base = preset$api_base,
-        api_model = preset$api_model,
+        base_url = preset$base_url,
+        model = preset$model,
         provider = key
       ))
     }
@@ -152,8 +152,8 @@ auto_detect_key <- function() {
   if (nchar(value) > 0) {
     return(list(
       api_key = value,
-      api_base = Sys.getenv("AGENTICR_API_BASE", unset = "https://api.deepseek.com"),
-      api_model = Sys.getenv("AGENTICR_MODEL", unset = "deepseek-v4-pro"),
+      base_url = Sys.getenv("AGENTICR_API_BASE", unset = "https://api.deepseek.com"),
+      model = Sys.getenv("AGENTICR_MODEL", unset = "deepseek-v4-pro"),
       provider = "custom"
     ))
   }
@@ -168,7 +168,7 @@ auto_detect_key <- function() {
 #' 3. Config file: in agenticr's data directory
 #' 4. In-session: agentic_config(key = "value")
 #'
-#' @param ... Named arguments to set (api_key, api_base, api_model, provider, temperature, max_tokens, reasoning_effort, max_turn_tokens, max_context_tokens)
+#' @param ... Named arguments to set (api_key, model, base_url, provider, temperature, max_tokens, reasoning_effort, max_turn_tokens, max_context_tokens)
 #' @param save If TRUE, save configuration to agenticr's data directory
 #' @export
 agentic_config <- function(..., save = FALSE) {
@@ -182,11 +182,11 @@ agentic_config <- function(..., save = FALSE) {
       cli::cli_alert_warning("Unknown provider '{provider}'. Use one of: {.val {names(PROVIDER_PRESETS)}}")
     } else {
       if (provider != cfg$provider) {
-        if (nchar(preset$api_base) > 0) {
-          cfg$api_base <- preset$api_base
+        if (nchar(preset$base_url) > 0) {
+          cfg$base_url <- preset$base_url
         }
-        if (nchar(preset$api_model) > 0) {
-          cfg$api_model <- preset$api_model
+        if (nchar(preset$model) > 0) {
+          cfg$model <- preset$model
         }
         if (!is.null(preset$max_tokens)) {
           cfg$max_tokens <- preset$max_tokens
@@ -211,16 +211,19 @@ agentic_config <- function(..., save = FALSE) {
           cfg$api_key <- ""
         }
       }
-      cli::cli_alert_success("Provider set to {preset$name} ({cfg$api_model})")
+      cli::cli_alert_success("Provider set to {preset$name} ({cfg$model})")
     }
   }
 
-  for (name in c("api_key", "api_base", "api_model", "temperature", "max_tokens",
+  for (name in c("api_key", "model", "base_url", "temperature", "max_tokens",
                   "reasoning_effort", "max_turn_tokens", "max_context_tokens", "provider")) {
     if (!is.null(args[[name]])) {
       cfg[[name]] <- args[[name]]
     }
   }
+  # Backward compat: accept old parameter names
+  if (!is.null(args$api_base))  cfg$base_url <- args$api_base
+  if (!is.null(args$api_model)) cfg$model <- args$api_model
 
   if (save) {
     save_config(cfg)
@@ -253,8 +256,8 @@ agentic_setup <- function() {
     if (tolower(trimws(ans)) != "n") {
       agentic_config(
         api_key = auto$api_key,
-        api_base = auto$api_base,
-        api_model = auto$api_model,
+        base_url = auto$base_url,
+        model = auto$model,
         provider = auto$provider,
         save = TRUE
       )
@@ -287,7 +290,7 @@ agentic_setup <- function() {
   preset <- PROVIDER_PRESETS[[provider]]
   cli::cli_text("")
   cli::cli_alert_info("Provider: {preset$name}")
-  cli::cli_alert_info("Endpoint: {preset$api_base}")
+  cli::cli_alert_info("Endpoint: {preset$base_url}")
 
   key_hint <- if (is.na(preset$env_var)) "your-api-key" else paste0("your ", preset$env_var)
   cat(paste0("Enter API key (", key_hint, "): "))
@@ -297,8 +300,8 @@ agentic_setup <- function() {
     return(invisible())
   }
 
-  model <- readline(paste0("Model [", preset$api_model, "]: "))
-  if (model == "") model <- preset$api_model
+  model <- readline(paste0("Model [", preset$model, "]: "))
+  if (model == "") model <- preset$model
 
   default_max_tokens <- preset$max_tokens %||% 16384
   max_tokens <- readline(paste0("Max output tokens [", default_max_tokens, "]: "))
@@ -310,8 +313,8 @@ agentic_setup <- function() {
 
   agentic_config(
     api_key = api_key,
-    api_base = preset$api_base,
-    api_model = model,
+    base_url = preset$base_url,
+    model = model,
     max_tokens = max_tokens,
     provider = provider,
     save = TRUE
@@ -329,8 +332,8 @@ agentic_setup <- function() {
 load_config <- function() {
   cfg <- list(
     api_key = "",
-    api_base = "https://api.deepseek.com",
-    api_model = "deepseek-v4-pro",
+    base_url = "https://api.deepseek.com",
+    model = "deepseek-v4-pro",
     provider = "deepseek",
     temperature = 0.1,
     max_turn_tokens = 64000,
@@ -350,14 +353,21 @@ load_config <- function() {
         cfg[[name]] <- file_cfg[[name]]
       }
     }
+    # Backward compat: map old key names to new
+    if (!is.null(file_cfg$api_base) && is.null(file_cfg$base_url)) {
+      cfg$base_url <- file_cfg$api_base
+    }
+    if (!is.null(file_cfg$api_model) && is.null(file_cfg$model)) {
+      cfg$model <- file_cfg$api_model
+    }
   }
 
   # 2. Environment variables override config file
   auto <- auto_detect_key()
   if (!is.null(auto)) {
     cfg$api_key <- auto$api_key
-    cfg$api_base <- auto$api_base
-    cfg$api_model <- auto$api_model
+    cfg$base_url <- auto$base_url
+    cfg$model <- auto$model
     cfg$provider <- auto$provider
   }
 
@@ -367,11 +377,11 @@ load_config <- function() {
   }
   env_base <- Sys.getenv("AGENTICR_API_BASE", unset = "")
   if (nchar(env_base) > 0) {
-    cfg$api_base <- env_base
+    cfg$base_url <- env_base
   }
   env_model <- Sys.getenv("AGENTICR_MODEL", unset = "")
   if (nchar(env_model) > 0) {
-    cfg$api_model <- env_model
+    cfg$model <- env_model
   }
 
   # 3. Apply provider preset defaults for fields not already set
@@ -440,8 +450,8 @@ print.agenticr_config <- function(x, ...) {
     "****"
   }
   cli::cli_li("API Key: {masked_key}")
-  cli::cli_li("API Base: {x$api_base}")
-  cli::cli_li("Model: {x$api_model}")
+  cli::cli_li("Base URL: {x$base_url}")
+  cli::cli_li("Model: {x$model}")
   cli::cli_li("Temperature: {x$temperature}")
   cli::cli_li("Max tokens: {x$max_tokens}")
   if (!is.null(x$reasoning_effort)) {
@@ -466,7 +476,7 @@ agentic_providers <- function() {
     } else {
       cli::col_red("not set")
     }
-    cli::cli_li("{.val {key}} - {p$name} ({p$api_model}) [{env}: {key_found}]")
+    cli::cli_li("{.val {key}} - {p$name} ({p$model}) [{env}: {key_found}]")
   }
   invisible()
 }

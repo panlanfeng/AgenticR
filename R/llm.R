@@ -19,7 +19,7 @@ chat_completion <- function(messages, tools = NULL, stream = FALSE) {
   messages <- sanitize_messages(messages)
 
   body <- list(
-    model = cfg$api_model,
+    model = cfg$model,
     messages = messages,
     temperature = cfg$temperature,
     max_tokens = cfg$max_tokens,
@@ -34,7 +34,7 @@ chat_completion <- function(messages, tools = NULL, stream = FALSE) {
     body$tools <- tools
   }
 
-  url <- paste0(cfg$api_base, "/chat/completions")
+  url <- paste0(cfg$base_url, "/chat/completions")
 
   response <- httr::POST(
     url = url,
@@ -118,7 +118,7 @@ chat_completion_stream <- function(messages, tools = NULL,
   messages <- sanitize_messages(messages)
 
   body <- list(
-    model = cfg$api_model,
+    model = cfg$model,
     messages = messages,
     temperature = cfg$temperature,
     max_tokens = cfg$max_tokens,
@@ -133,7 +133,7 @@ chat_completion_stream <- function(messages, tools = NULL,
     body$tools <- tools
   }
 
-  url <- paste0(cfg$api_base, "/chat/completions")
+  url <- paste0(cfg$base_url, "/chat/completions")
 
   content_parts <- character(0)
   reasoning_parts <- character(0)

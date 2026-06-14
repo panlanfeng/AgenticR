@@ -11,10 +11,10 @@ provider: "deepseek"
 api_key: ""
 
 # API endpoint base URL (auto-set by provider)
-api_base: "https://api.deepseek.com"
+base_url: "https://api.deepseek.com"
 
 # Model name (auto-set by provider)
-api_model: "deepseek-v4-pro"
+model: "deepseek-v4-pro"
 
 # Generation parameters (auto-set from provider preset when switching)
 temperature: 0.1

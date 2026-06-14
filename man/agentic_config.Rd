@@ -4,7 +4,7 @@
 \description{Read, update, and persist agenticr configuration. Switching providers auto-loads the provider's defaults (model, base URL, context window).}
 \usage{agentic_config(..., save = FALSE)}
 \arguments{
-\item{...}{Named arguments to set: \code{provider}, \code{api_key}, \code{api_base}, \code{api_model}, \code{temperature}, \code{max_tokens}, \code{reasoning_effort}, \code{max_turn_tokens}, \code{max_context_tokens}.}
+\item{...}{Named arguments to set: \code{provider}, \code{api_key}, \code{model}, \code{base_url}, \code{temperature}, \code{max_tokens}, \code{reasoning_effort}, \code{max_turn_tokens}, \code{max_context_tokens}.}
 \item{save}{If TRUE, save configuration to \verb{agenticr config file}.}
 }
 \details{
