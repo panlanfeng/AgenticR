@@ -179,12 +179,16 @@ agentic_config <- function(..., save = FALSE) {
       }
       if (!is.null(preset$reasoning_effort)) {
         cfg$reasoning_effort <- preset$reasoning_effort
+      } else {
+        cfg$reasoning_effort <- NULL
       }
       env_var <- preset$env_var
       if (!is.na(env_var)) {
         key <- Sys.getenv(env_var, unset = "")
         if (nchar(key) > 0) {
           cfg$api_key <- key
+        } else {
+          cfg$api_key <- ""
         }
       }
       cli::cli_alert_success("Provider set to {preset$name} ({cfg$api_model})")
@@ -300,7 +304,6 @@ load_config <- function() {
     provider = "deepseek",
     max_tokens = 32768,
     temperature = 0.1,
-    reasoning_effort = "medium",
     max_turn_tokens = 64000,
     max_context_tokens = 1048576
   )
@@ -340,6 +343,17 @@ load_config <- function() {
   env_model <- Sys.getenv("AGENTICR_MODEL", unset = "")
   if (nchar(env_model) > 0) {
     cfg$api_model <- env_model
+  }
+
+  # 3. Apply provider preset defaults for fields not already set
+  preset <- PROVIDER_PRESETS[[cfg$provider]]
+  if (!is.null(preset)) {
+    if (!is.null(preset$reasoning_effort) && is.null(cfg$reasoning_effort)) {
+      cfg$reasoning_effort <- preset$reasoning_effort
+    }
+    if (!is.null(preset$max_context_tokens)) {
+      cfg$max_context_tokens <- preset$max_context_tokens
+    }
   }
 
   cfg
