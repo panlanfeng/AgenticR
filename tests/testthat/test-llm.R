@@ -9,8 +9,19 @@ has_api_key <- function() {
   if (nchar(Sys.getenv("AGENTICR_API_KEY", unset = "")) > 0) return(TRUE)
   if (nchar(Sys.getenv("DEEPSEEK_API_KEY", unset = "")) > 0) return(TRUE)
   tryCatch({
-    get_api_config()
-    TRUE
+    cfg <- get_api_config()
+    if (identical(cfg$provider, "local")) {
+      # local provider requires a running ollama instance
+      resp <- httr::GET("http://localhost:11434/api/tags", httr::timeout(2))
+      return(httr::status_code(resp) == 200)
+    }
+    if (identical(cfg$provider, "custom") && nchar(cfg$base_url) > 0) {
+      # custom provider: verify endpoint is reachable
+      return(httr::status_code(
+        httr::GET(paste0(cfg$base_url, "/models"), httr::timeout(2))) == 200)
+    }
+    # All other providers require a valid API key
+    nchar(cfg$api_key) > 0
   }, error = function(e) FALSE)
 }
 
