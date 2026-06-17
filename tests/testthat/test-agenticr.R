@@ -321,7 +321,7 @@ test_that("load_config returns valid config structure", {
 })
 
 test_that("agentic_config updates in-memory config", {
-  agentic_config(api_key = "sk-test123", save = FALSE)
+  agentic_config(provider = "deepseek", api_key = "sk-test123", save = FALSE)
   cfg <- get_api_config()
   expect_equal(cfg$api_key, "sk-test123")
   agentic_config(api_key = "", save = FALSE)
