@@ -80,7 +80,7 @@ local_model_pull <- function(model) {
   bin <- local_ollama_bin()
   if (!nzchar(bin)) return(FALSE)
 
-  cli::cli_alert_info("Downloading model '{model}' (~550MB, one-time)...")
+  cli::cli_alert_info("Downloading model '{model}' (one-time)...")
   result <- tryCatch(
     system2(bin, c("pull", model), stdout = TRUE, stderr = TRUE),
     error = function(e) {
@@ -120,8 +120,8 @@ local_ensure <- function(model) {
 agentic_local_setup <- function() {
   cli::cli_h1("Local Model Setup")
 
-  model <- "qwen3:0.6b"
-  cli::cli_text("Using {.val {model}} via Ollama (~550MB download)")
+  model <- "qwen3:1.7b"
+  cli::cli_text("Using {.val {model}} via Ollama (~1.4GB download)")
   cli::cli_text("")
 
   if (!local_ensure(model)) {

@@ -128,7 +128,7 @@ PROVIDER_PRESETS <- list(
   local = list(
     name = "Local (Ollama)",
     base_url = "http://localhost:11434/v1",
-    model = "qwen3:0.6b",
+    model = "qwen3:1.7b",
     env_var = NA_character_,
     max_tokens = 8192,
     max_context_tokens = 32768
