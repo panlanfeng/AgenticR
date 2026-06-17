@@ -67,6 +67,8 @@ agenticr_env$version <- "0.3.0"
 agenticr_env$session_dir <- NULL
 agenticr_env$session_id <- NULL
 agenticr_env$outputs_dir <- NULL
+agenticr_env$local_server <- NULL
+agenticr_env$mcp_servers <- list()
 
 .onLoad <- function(libname, pkgname) {
   cfg <- load_config()

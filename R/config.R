@@ -124,6 +124,14 @@ PROVIDER_PRESETS <- list(
     env_var = NA_character_,
     max_tokens = 16384,
     max_context_tokens = 131072
+  ),
+  local = list(
+    name = "Local (Ollama)",
+    base_url = "http://localhost:11434/v1",
+    model = "qwen3:0.6b",
+    env_var = NA_character_,
+    max_tokens = 8192,
+    max_context_tokens = 32768
   )
 )
 
@@ -423,7 +431,17 @@ save_config <- function(cfg) {
 #' @keywords internal
 get_api_config <- function() {
   cfg <- agenticr_env$config
-  if (is.null(cfg) || cfg$api_key == "") {
+  if (is.null(cfg)) {
+    stop(
+      "No configuration loaded. Use agentic_setup() or one of:\n",
+      "  agentic_config(api_key = \"sk-...\", save = TRUE)\n",
+      "  agentic_config(provider = \"deepseek\")\n",
+      "Or set AGENTICR_API_KEY or provider-specific env var."
+    )
+  }
+  # Local and custom providers don't require an API key
+  if (cfg$provider == "local" || cfg$provider == "custom") return(cfg)
+  if (cfg$api_key == "") {
     stop(
       "No API key configured. Use agentic_setup() or one of:\n",
       "  agentic_config(api_key = \"sk-...\", save = TRUE)\n",

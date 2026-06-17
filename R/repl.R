@@ -56,6 +56,7 @@ agentic <- function(auto = TRUE, ...) {
     agenticr_env$is_active <- FALSE
     agenticr_env$conversation <- list()
     mcp_disconnect_all()
+    local_on_exit()
   })
 
   cli::cli_h1("AgenticR - AI-Powered R Console")
@@ -67,8 +68,26 @@ agentic <- function(auto = TRUE, ...) {
 
   cfg <- tryCatch(get_api_config(), error = function(e) {
     cli::cli_alert_danger("No API key configured.")
-    cli::cli_text("Run {.code agentic_setup()} to configure, or set an environment variable.")
-    NULL
+    cli::cli_text("")
+    cli::cli_text("1. Set up cloud API {.code (agentic_setup)}")
+    cli::cli_text("2. Use local model via Ollama {.code (agentic_local_setup)}")
+    cli::cli_text("3. Exit")
+    cli::cli_text("")
+    ans <- readline("Choose [1]: ")
+    if (ans == "2") {
+      ok <- agentic_local_setup()
+      if (isFALSE(ok)) return(invisible())
+    } else if (ans == "3") {
+      return(invisible())
+    } else {
+      agentic_setup()
+    }
+    cfg2 <- tryCatch(get_api_config(), error = function(e2) {
+      cli::cli_alert_danger("Still no valid config. Exiting.")
+      NULL
+    })
+    if (is.null(cfg2)) return(invisible())
+    cfg2
   })
   if (is.null(cfg)) return(invisible())
 
@@ -260,6 +279,7 @@ agentic_resume <- function(session_id, ...) {
     agenticr_env$is_active <- FALSE
     agenticr_env$conversation <- list()
     mcp_disconnect_all()
+    local_on_exit()
   })
 
   cli::cli_h1("AgenticR -- Resumed Session")

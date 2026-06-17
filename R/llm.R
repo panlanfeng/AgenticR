@@ -36,12 +36,14 @@ chat_completion <- function(messages, tools = NULL, stream = FALSE) {
 
   url <- paste0(cfg$base_url, "/chat/completions")
 
+  headers <- list("Content-Type" = "application/json")
+  if (cfg$provider != "local" && nchar(cfg$api_key) > 0) {
+    headers[["Authorization"]] <- paste("Bearer", cfg$api_key)
+  }
+
   response <- httr::POST(
     url = url,
-    httr::add_headers(
-      "Authorization" = paste("Bearer", cfg$api_key),
-      "Content-Type" = "application/json"
-    ),
+    do.call(httr::add_headers, headers),
     body = jsonlite::toJSON(body, auto_unbox = TRUE, force = TRUE),
     encode = "raw",
     httr::timeout(120)
@@ -144,13 +146,14 @@ chat_completion_stream <- function(messages, tools = NULL,
   first_chunk <- NULL
   line_buf <- ""
 
+  headers <- list("Content-Type" = "application/json", "Accept" = "text/event-stream")
+  if (cfg$provider != "local" && nchar(cfg$api_key) > 0) {
+    headers[["Authorization"]] <- paste("Bearer", cfg$api_key)
+  }
+
   response <- httr::POST(
     url = url,
-    httr::add_headers(
-      "Authorization" = paste("Bearer", cfg$api_key),
-      "Content-Type" = "application/json",
-      "Accept" = "text/event-stream"
-    ),
+    do.call(httr::add_headers, headers),
     body = jsonlite::toJSON(body, auto_unbox = TRUE, force = TRUE),
     encode = "raw",
     httr::write_stream(function(x) {
