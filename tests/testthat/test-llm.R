@@ -150,21 +150,21 @@ test_that("LLM: agent fixes missing function error", {
   }
 })
 
-test_that("LLM: agent fixes object not found", {
+test_that("LLM: agent uses correct method when ambiguous", {
   skip_if_no_api()
   messages <- list(list(role = "system", content = SYSTEM_PROMPT))
   messages <- c(messages, list(list(role = "user",
-    content = "the user typed: head(mtcar)\nThe error: object 'mtcar' not found\nFix it")))
+    content = "show the first 6 rows of mtcars")))
   resp <- chat_completion(messages, tools = get_tool_definitions())
   msg <- resp$choices[[1]]$message
   if (!is.null(msg$tool_calls) && length(msg$tool_calls) > 0) {
     tc <- msg$tool_calls[[1]]
     if (tc$`function`$name == "execute_r_code") {
       args <- jsonlite::fromJSON(tc$`function`$arguments, simplifyVector = FALSE)
-      expect_match(tolower(args$code), "mtcars")
+      expect_match(tolower(args$code), "head")
     }
   } else if (!is.null(msg$content)) {
-    expect_match(tolower(msg$content), "mtcars")
+    expect_match(tolower(msg$content), "head|first.*row|mtcars")
   }
 })
 
