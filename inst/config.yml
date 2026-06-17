@@ -5,20 +5,19 @@
 # See agentic_providers() for all supported providers and their env vars.
 
 # Provider preset name
-provider: "deepseek"
+provider: "local"
 
-# Your API key (set via agentic_config() or env var)
+# Your API key (not needed for local Ollama provider)
 api_key: ""
 
 # API endpoint base URL (auto-set by provider)
-base_url: "https://api.deepseek.com"
+base_url: "http://localhost:11434/v1"
 
 # Model name (auto-set by provider)
-model: "deepseek-v4-pro"
+model: "qwen3:1.7b"
 
 # Generation parameters (auto-set from provider preset when switching)
 temperature: 0.1
-max_tokens: 32768
+max_tokens: 8192
 max_turn_tokens: 64000
-max_context_tokens: 1048576
-reasoning_effort: "medium"
+max_context_tokens: 32768

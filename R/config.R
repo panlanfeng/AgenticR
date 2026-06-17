@@ -340,9 +340,9 @@ agentic_setup <- function() {
 load_config <- function() {
   cfg <- list(
     api_key = "",
-    base_url = "https://api.deepseek.com",
-    model = "deepseek-v4-pro",
-    provider = "deepseek",
+    base_url = "http://localhost:11434/v1",
+    model = "qwen3:1.7b",
+    provider = "local",
     temperature = 0.1,
     max_turn_tokens = 64000,
     max_context_tokens = 1048576
@@ -440,7 +440,21 @@ get_api_config <- function() {
     )
   }
   # Local and custom providers don't require an API key
-  if (cfg$provider == "local" || cfg$provider == "custom") return(cfg)
+  if (cfg$provider == "local") {
+    alive <- tryCatch(
+      httr::status_code(httr::GET("http://localhost:11434/api/tags", httr::timeout(2))) == 200,
+      error = function(e) FALSE
+    )
+    if (!alive) {
+      stop(
+        "Ollama is not running. Start it with 'ollama serve' or choose a different provider.\n",
+        "  agentic_config(provider = \"deepseek\")\n",
+        "  agentic_setup()"
+      )
+    }
+    return(cfg)
+  }
+  if (cfg$provider == "custom") return(cfg)
   if (cfg$api_key == "") {
     stop(
       "No API key configured. Use agentic_setup() or one of:\n",
