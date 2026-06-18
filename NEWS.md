@@ -1,3 +1,17 @@
+# agenticr 0.3.2
+
+- Default provider is now local (Ollama Qwen3-1.7B) — zero config needed
+- First-run auto-detection: if no API key, offers to install Ollama automatically
+  with platform-specific commands (brew/curl|sh/winget)
+- `/provider` and `/model` slash commands for switching providers and models mid-session
+- `agentic_config()` renamed params: `api_base` → `base_url`, `api_model` → `model`
+  (old names accepted for backward compat)
+- Per-provider max_tokens defaults with fallback in setup wizard
+- Bundled `config-api` skill with provider reference data and doc URLs
+- LLM tests: 100% pass rate against local Qwen3-1.7B model
+- Test improvements: agent-loop tests for multi-step queries, explicit fail guards
+  on all if/else branches, removed unreasonable "fix mtcar typo" test
+
 # agenticr 0.3.1
 
 - Per-provider max_tokens defaults (auto-set when switching providers)

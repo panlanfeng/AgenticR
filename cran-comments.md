@@ -1,4 +1,4 @@
-# CRAN submission notes for agenticr 0.3.1
+# CRAN submission notes for agenticr 0.3.2
 
 ## Test environments
 - macOS (aarch64-apple-darwin23), R 4.6.0
