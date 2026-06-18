@@ -91,7 +91,7 @@ agentic <- function(auto = TRUE, ...) {
   })
   if (is.null(cfg)) return(invisible())
 
-  cli::cli_text("{.emph {cfg$model} @ {.url {cfg$base_url}}")
+  cli::cli_text("{.emph {cfg$model}} @ {.url {cfg$base_url}}")
   cli::cli_text("Session: {.file {agenticr_env$session_dir}}")
 
   # Snapshot stable context once -- never re-read mid-session for cache stability
@@ -294,7 +294,7 @@ agentic_resume <- function(session_id, ...) {
   })
   if (is.null(cfg)) return(invisible())
 
-  cli::cli_text("{.emph {cfg$model} @ {.url {cfg$base_url}}")
+  cli::cli_text("{.emph {cfg$model}} @ {.url {cfg$base_url}}")
 
   # Snapshot stable context once -- never re-read mid-session for cache stability
   agenticr_env$cached_stable_context <- build_stable_context()
