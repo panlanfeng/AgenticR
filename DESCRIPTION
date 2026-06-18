@@ -4,7 +4,7 @@ Title: AI-Powered R Console Assistant
 Version: 0.3.2
 Authors@R: person("Lanfeng", "Pan", email = "panlanfeng@gmail.com", role = c("aut", "cre"))
 Description: An AI-powered assistant for the R console. Type natural language
-    or incorrect R code directly in the console, and agenticr routes it to an
+    or incorrect R code directly in the console, and 'agenticr' routes it to an
     LLM agent for processing. Focused on statistical analysis, data
     transformation, and visualization.
 License: MIT + file LICENSE
