@@ -1119,6 +1119,8 @@ handle_slash_command <- function(input) {
       cli::cli_h2("AgenticR Commands")
       cli::cli_li("{.code /help} - Show this help")
       cli::cli_li("{.code /config} - Show current configuration")
+      cli::cli_li("{.code /provider} - Show or switch LLM provider")
+      cli::cli_li("{.code /model} - Show or change model name")
       cli::cli_li("{.code /clear} - Clear conversation history")
       cli::cli_li("{.code /vars} - List variables in global environment")
       cli::cli_li("{.code /info <name>} - Show info about a variable")
@@ -1137,6 +1139,18 @@ handle_slash_command <- function(input) {
     "/mcp" = agentic_mcp(),
     "/todo" = show_todos(),
     "/history" = show_history(),
+    "/provider" = {
+      cli::cli_h2("Provider")
+      cli::cli_li("Current: {.val {agenticr_env$config$provider}} ({agenticr_env$config$model})")
+      cli::cli_text("")
+      agentic_providers()
+      cli::cli_text("")
+      cli::cli_text("Switch with {.code /provider <name>}")
+    },
+    "/model" = {
+      cli::cli_alert_info("Current model: {.val {agenticr_env$config$model}}")
+      cli::cli_text("Use {.code /model <name>} to change.")
+    },
     "/config" = {
       cfg <- get_api_config()
       print.agenticr_config(cfg)
@@ -1174,6 +1188,12 @@ handle_slash_command <- function(input) {
         session_id <- trimws(sub("^/resume\\s+", "", input))
         agenticr_env$is_active <- FALSE
         agentic_resume(session_id)
+      } else if (grepl("^/provider\\s", input)) {
+        provider <- trimws(sub("^/provider\\s+", "", input))
+        agentic_config(provider = provider)
+      } else if (grepl("^/model\\s", input)) {
+        model <- trimws(sub("^/model\\s+", "", input))
+        agentic_config(model = model)
       } else {
         cli::cli_alert_warning("Unknown command: {input}. Type /help for help.")
       }
