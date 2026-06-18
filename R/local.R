@@ -95,17 +95,62 @@ local_model_pull <- function(model) {
   FALSE
 }
 
+# Detect platform for install instructions
+local_platform <- function() {
+  os <- Sys.info()[["sysname"]]
+  if (os == "Darwin") return("macos")
+  if (os == "Linux") return("linux")
+  if (os == "Windows") return("windows")
+  "other"
+}
+
+# Install ollama with platform-specific command
+local_ollama_install <- function() {
+  plat <- local_platform()
+  cmd <- switch(plat,
+    macos   = "brew install ollama",
+    linux   = "curl -fsSL https://ollama.com/install.sh | sh",
+    windows = "winget install Ollama.Ollama",
+    NULL
+  )
+  if (is.null(cmd)) return(FALSE)
+
+  cli::cli_alert_info("Installing Ollama (this may take a few minutes)...")
+  cli::cli_text("Running: {.code {cmd}}")
+  result <- tryCatch(
+    system(cmd, intern = FALSE),
+    error = function(e) {
+      cli::cli_alert_danger("Install failed: {conditionMessage(e)}")
+      NULL
+    }
+  )
+  if (is.null(result) || result != 0) {
+    cli::cli_alert_danger("Ollama installation failed. Try manually: {.code {cmd}}")
+    return(FALSE)
+  }
+  cli::cli_alert_success("Ollama installed successfully")
+  TRUE
+}
+
 # Ensure ollama is running and the model is available
 local_ensure <- function(model) {
   if (!local_ollama_start()) {
-    cli::cli_alert_danger(
-      "Ollama not found. Install it first:\n",
-      "  macOS:  brew install ollama\n",
-      "  Linux:  curl -fsSL https://ollama.com/install.sh | sh\n",
-      "  Win:    winget install Ollama.Ollama\n",
-      "Then restart agentic()."
-    )
-    return(FALSE)
+    has_bin <- nzchar(local_ollama_bin())
+    if (has_bin) return(FALSE)
+
+    # Ollama not installed — offer to install
+    cli::cli_text("")
+    cli::cli_alert_warning("Ollama is not installed.")
+    cli::cli_text("Qwen3-1.7B model will be downloaded (~1.4GB) after installation.")
+    cli::cli_text("")
+    ans <- readline("Install Ollama now? [Y/n] ")
+    if (!tolower(trimws(ans)) %in% c("", "y", "yes")) {
+      cli::cli_alert_info("Skipped. Run {.code agentic_setup()} for cloud API, or install Ollama manually.")
+      return(FALSE)
+    }
+
+    if (!local_ollama_install()) return(FALSE)
+    if (!local_ollama_start()) return(FALSE)
   }
 
   if (local_model_installed(model)) {
