@@ -6,9 +6,10 @@ AgenticR lets an AI agent live directly in your R console. Type natural language
 
 ## Key Features
 
+- **Zero-config local model** — if no API key, uses Ollama + Qwen3-1.7B automatically
 - **Zero-overhead R execution** — valid R code runs directly, no LLM round-trip
 - **Any grammar** — type R, pseudo-code, or plain English; agenticr figures it out
-- **14 provider presets** with auto-detection from environment variables
+- **16 provider presets** with auto-detection from environment variables
 - **Agent tools** — R execution, file read/write/edit, repo search, data inspection
 - **Skills system** — installable prompt templates from URLs
 - **MCP support** — connect external tool servers via Model Context Protocol
@@ -25,9 +26,25 @@ install.packages("remotes")
 remotes::install_github("panlanfeng/AgenticR")
 ```
 
-Or build from source: `R CMD build . && R CMD INSTALL agenticr_0.3.0.tar.gz`
+Or build from source: `R CMD build . && R CMD INSTALL agenticr_0.3.2.tar.gz`
 
 ## Quick Start
+
+### Zero-config — runs without an API token
+
+AgenticR works out of the box with no API key. It uses a locally hosted
+**Qwen3 1.7B** model via **Ollama** with full tool-calling support:
+
+```r
+library(agenticr)
+agentic()  # Starts immediately if Ollama is running
+```
+
+On first run, agenticr will offer to install Ollama and download the Qwen3 1.7B
+model (~1.4GB download, one-time). Once set up, you have a fully capable AI agent
+running entirely on your machine — no API token required.
+
+### With an API key
 
 ```r
 library(agenticr)
@@ -35,8 +52,18 @@ library(agenticr)
 # One-time setup (interactive wizard)
 agentic_setup()
 
-# Or configure directly
-agentic_config(provider = "deepseek")
+# Or configure directly with full parameters
+agentic_config(
+  provider = "deepseek",
+  model = "deepseek-v4-pro",
+  base_url = "https://api.deepseek.com",
+  api_key = "sk-...",
+  max_tokens = 32768,
+  reasoning_effort = "medium",   # minimal|low|medium|high
+  temperature = 0.1,
+  max_turn_tokens = 64000,
+  max_context_tokens = 1048576
+)
 
 # Start AI-assisted session
 agentic()
@@ -48,8 +75,18 @@ At the prompt, type R code, natural language, or slash commands. Press Ctrl+C or
 
 ```r
 library(agenticr)
-agentic_config(provider = "deepseek")  # auto-detects DEEPSEEK_API_KEY env var, model deepseek-v4-pro
+agentic_config(provider = "deepseek")  # auto-detects DEEPSEEK_API_KEY, uses preset defaults
 agentic()
+```
+
+### Switch between providers and models mid-session
+
+```r
+> /provider            # list all providers with key status
+> /provider openai     # switch to OpenAI
+> /model               # show current model
+> /model gpt-4.1       # change model for current provider
+> /provider local      # switch back to local Ollama model
 ```
 
 ### Run a single query
@@ -80,13 +117,13 @@ export QWEN_API_KEY="..."
 ### Provider switch
 
 ```r
-agentic_config(provider = "deepseek", api_model = "deepseek-v4-pro")
+agentic_config(provider = "deepseek", model = "deepseek-v4-pro")
 agentic_config(provider = "deepseek", reasoning_effort = "high")  # minimal|low|medium|high
-agentic_config(provider = "openai", api_model = "gpt-5.5")
-agentic_config(provider = "anthropic", api_model = "claude-opus-4-7")
-agentic_config(provider = "glm", api_model = "glm-5.1")
-agentic_config(provider = "kimi", api_model = "kimi-k2-thinking")
-agentic_config(provider = "siliconflow", api_model = "deepseek-ai/DeepSeek-V4-Flash")
+agentic_config(provider = "openai", model = "gpt-5.5")
+agentic_config(provider = "anthropic", model = "claude-opus-4-7")
+agentic_config(provider = "glm", model = "glm-5.1")
+agentic_config(provider = "kimi", model = "kimi-k2-thinking")
+agentic_config(provider = "siliconflow", model = "deepseek-ai/DeepSeek-V4-Flash")
 ```
 
 ### Config file
@@ -96,8 +133,8 @@ Config is stored in agenticr's data directory (platform-specific: `~/Library/App
 ```yaml
 provider: "deepseek"
 api_key: "sk-..."
-api_base: "https://api.deepseek.com"
-api_model: "deepseek-v4-pro"
+base_url: "https://api.deepseek.com"
+model: "deepseek-v4-pro"
 temperature: 0.1
 max_tokens: 32768
 max_turn_tokens: 64000
@@ -135,6 +172,8 @@ agentic_config(temperature = 0.0)  # deterministic output
 | `;` prefix | Force natural language mode for this input |
 | `/help` | Show available commands |
 | `/config` | Show current configuration |
+| `/provider` | List or switch LLM provider (`/provider anthropic`) |
+| `/model` | Show or change model name (`/model gpt-4.1`) |
 | `/clear` | Clear conversation history |
 | `/vars` | List variables in global environment |
 | `/info <name>` | Show dataframe structure |
@@ -154,7 +193,11 @@ agentic_resume("20250515_120000_a1b2c3d4")    # resume by ID
 
 ## Skills (opt-in prompt templates)
 
-Install skills from URLs. Activate them explicitly with `/skill <name>`.
+AgenticR includes a bundled `config-api` skill that guides users through API setup
+with provider detection, model defaults, and documentation references. Activate it
+with `/skill config-api`.
+
+Additional skills can be installed from URLs:
 
 ```r
 agentic_install_skill("https://raw.githubusercontent.com/mattpocock/skills/main/skills/productivity/grill-me/SKILL.md")
@@ -187,7 +230,7 @@ mcp_servers:
 ## Memory System
 
 AgenticR builds a memory file in its data directory, indexing session learnings.
-Use `/memory` in the REPL to view current memory. The agent automatically records insights.
+The agent automatically records insights across sessions.
 
 ## Architecture
 
