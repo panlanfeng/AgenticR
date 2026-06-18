@@ -69,12 +69,28 @@ agentic <- function(auto = TRUE, ...) {
   cfg <- tryCatch(get_api_config(), error = function(e) {
     cli::cli_alert_danger("No API key configured.")
     cli::cli_text("")
+
+    # Check if ollama is available
+    has_ollama <- nzchar(Sys.which("ollama"))
+    ollama_running <- tryCatch(
+      httr::status_code(httr::GET("http://localhost:11434/api/tags", httr::timeout(2))) == 200,
+      error = function(e) FALSE
+    )
+
+    if (has_ollama && !ollama_running) {
+      cli::cli_text("Ollama is installed but not running. Starting it now...")
+      if (agentic_local_setup()) {
+        cfg2 <- tryCatch(get_api_config(), error = function(e2) NULL)
+        if (!is.null(cfg2)) return(cfg2)
+      }
+    }
+
     cli::cli_text("1. Set up cloud API {.code (agentic_setup)}")
     cli::cli_text("2. Use local model via Ollama {.code (agentic_local_setup)}")
     cli::cli_text("3. Exit")
     cli::cli_text("")
-    ans <- readline("Choose [1]: ")
-    if (ans == "2") {
+    ans <- readline("Choose [2]: ")
+    if (ans == "2" || ans == "") {
       ok <- agentic_local_setup()
       if (isFALSE(ok)) return(invisible())
     } else if (ans == "3") {
