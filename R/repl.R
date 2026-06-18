@@ -85,18 +85,30 @@ agentic <- function(auto = TRUE, ...) {
       }
     }
 
-    cli::cli_text("1. Set up cloud API {.code (agentic_setup)}")
-    cli::cli_text("2. Use local model via Ollama {.code (agentic_local_setup)}")
-    cli::cli_text("3. Exit")
-    cli::cli_text("")
-    ans <- readline("Choose [2]: ")
-    if (ans == "2" || ans == "") {
-      ok <- agentic_local_setup()
-      if (isFALSE(ok)) return(invisible())
-    } else if (ans == "3") {
-      return(invisible())
-    } else {
-      agentic_setup()
+    repeat {
+      cli::cli_text("1. Set up cloud API {.code (agentic_setup)}")
+      cli::cli_text("2. Use local model via Ollama {.code (agentic_local_setup)}")
+      if (has_ollama || ollama_running) {
+        cli::cli_text("3. Exit")
+        default_choice <- "2"
+      } else {
+        cli::cli_text("3. Exit")
+        cli::cli_text("")
+        default_choice <- "1"
+      }
+      cli::cli_text("")
+      ans <- readline(paste0("Choose [", default_choice, "]: "))
+      if (ans == "2" || (ans == "" && default_choice == "2")) {
+        ok <- agentic_local_setup()
+        if (isTRUE(ok)) break
+        # Setup failed — loop back to show menu again
+        cli::cli_text("")
+      } else if (ans == "3") {
+        return(invisible())
+      } else {
+        agentic_setup()
+        break
+      }
     }
     cfg2 <- tryCatch(get_api_config(), error = function(e2) {
       cli::cli_alert_danger("Still no valid config. Exiting.")

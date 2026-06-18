@@ -446,11 +446,26 @@ get_api_config <- function() {
       error = function(e) FALSE
     )
     if (!alive) {
-      stop(
-        "Ollama is not running. Start it with 'ollama serve' or choose a different provider.\n",
-        "  agentic_config(provider = \"deepseek\")\n",
-        "  agentic_setup()"
-      )
+      has_bin <- nzchar(Sys.which("ollama"))
+      if (!has_bin) {
+        stop(
+          "Local model provider selected but Ollama is not installed.\n",
+          "Install it:\n",
+          "  macOS:  brew install ollama\n",
+          "  Linux:  curl -fsSL https://ollama.com/install.sh | sh\n",
+          "  Win:    winget install Ollama.Ollama\n",
+          "Or switch to a cloud provider:\n",
+          "  agentic_config(provider = \"deepseek\")\n",
+          "  agentic_setup()"
+        )
+      } else {
+        stop(
+          "Ollama is installed but not running. Start it with 'ollama serve'.\n",
+          "Or switch to a cloud provider:\n",
+          "  agentic_config(provider = \"deepseek\")\n",
+          "  agentic_setup()"
+        )
+      }
     }
     return(cfg)
   }
