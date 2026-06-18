@@ -138,17 +138,7 @@ local_ensure <- function(model) {
     has_bin <- nzchar(local_ollama_bin())
     if (has_bin) return(FALSE)
 
-    # Ollama not installed — offer to install
-    cli::cli_text("")
-    cli::cli_alert_warning("Ollama is not installed.")
-    cli::cli_text("Qwen3-1.7B model will be downloaded (~1.4GB) after installation.")
-    cli::cli_text("")
-    ans <- readline("Install Ollama now? [Y/n] ")
-    if (!tolower(trimws(ans)) %in% c("", "y", "yes")) {
-      cli::cli_alert_info("Skipped. Run {.code agentic_setup()} for cloud API, or install Ollama manually.")
-      return(FALSE)
-    }
-
+    # Ollama not installed — install it (caller should have confirmed already)
     if (!local_ollama_install()) return(FALSE)
     if (!local_ollama_start()) return(FALSE)
   }

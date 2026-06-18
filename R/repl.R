@@ -85,6 +85,18 @@ agentic <- function(auto = TRUE, ...) {
       }
     }
 
+    if (!has_ollama) {
+      cli::cli_text("Ollama is not installed. The Qwen3-1.7B model will be downloaded\n(~1.4GB) after installation.")
+      cli::cli_text("")
+      ans <- readline("Install Ollama now? [Y/n] ")
+      if (tolower(trimws(ans)) %in% c("", "y", "yes")) {
+        if (agentic_local_setup()) {
+          cfg2 <- tryCatch(get_api_config(), error = function(e2) NULL)
+          if (!is.null(cfg2)) return(cfg2)
+        }
+      }
+    }
+
     # Show menu (loop until valid config or exit)
     repeat {
       cli::cli_text("1. Set up cloud API {.code (agentic_setup)}")
