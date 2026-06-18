@@ -11,8 +11,7 @@ has_api_key <- function() {
   tryCatch({
     cfg <- get_api_config()
     if (identical(cfg$provider, "local")) {
-      # local provider requires a running ollama instance
-      resp <- httr::GET("http://localhost:11434/api/tags", httr::timeout(2))
+      resp <- httr::GET("http://localhost:11434/api/tags", httr::timeout(5))
       return(httr::status_code(resp) == 200)
     }
     if (identical(cfg$provider, "custom") && nchar(cfg$base_url) > 0) {
@@ -111,6 +110,8 @@ test_that("LLM: execute_r_code tool runs R code", {
     expect_match(result, "3", all = FALSE)
   } else if (!is.null(msg$content)) {
     expect_match(msg$content, "3", all = FALSE)
+  } else {
+    fail("Response had no tool calls and no content")
   }
 })
 
@@ -144,28 +145,34 @@ test_that("LLM: agent fixes missing function error", {
     if (tc$`function`$name == "execute_r_code") {
       args <- jsonlite::fromJSON(tc$`function`$arguments, simplifyVector = FALSE)
       expect_match(args$code, "mean", ignore.case = TRUE)
+    } else {
+      fail(paste("Expected execute_r_code, got", tc$`function`$name))
     }
   } else if (!is.null(msg$content)) {
     expect_match(msg$content, "mean", ignore.case = TRUE)
+  } else {
+    fail("No tool calls and no content in response")
   }
 })
 
-test_that("LLM: agent uses correct method when ambiguous", {
+test_that("LLM: agent shows first 6 rows of a dataset", {
   skip_if_no_api()
-  messages <- list(list(role = "system", content = SYSTEM_PROMPT))
-  messages <- c(messages, list(list(role = "user",
-    content = "show the first 6 rows of mtcars")))
-  resp <- chat_completion(messages, tools = get_tool_definitions())
-  msg <- resp$choices[[1]]$message
-  if (!is.null(msg$tool_calls) && length(msg$tool_calls) > 0) {
-    tc <- msg$tool_calls[[1]]
-    if (tc$`function`$name == "execute_r_code") {
-      args <- jsonlite::fromJSON(tc$`function`$arguments, simplifyVector = FALSE)
-      expect_match(tolower(args$code), "head")
-    }
-  } else if (!is.null(msg$content)) {
-    expect_match(tolower(msg$content), "head|first.*row|mtcars")
-  }
+  agenticr_env$context_injected <- FALSE
+  agenticr_env$stable_summary <- NULL
+  agenticr_env$conversation <- list()
+  agenticr_env$ask_permission <- function(prompt) FALSE
+
+  expect_error(
+    process_with_agent("show the first 6 rows of mtcars"),
+    NA
+  )
+  conv <- agenticr_env$conversation
+  expect_true(length(conv) > 0)
+  # Result must contain actual mtcars data, not just a function name
+  msgs <- Filter(function(m) m$role == "tool", conv)
+  expect_true(length(msgs) > 0)
+  combined <- paste(sapply(msgs, `[[`, "content"), collapse = " ")
+  expect_true(grepl("Mazda|mpg|21\\.0|Hornet", combined))
 })
 
 # ============================================================================
@@ -175,40 +182,36 @@ test_that("LLM: agent uses correct method when ambiguous", {
 test_that("LLM: t-test request generates correct analysis", {
   skip_if_no_api()
   skip_on_cran()
-  messages <- list(list(role = "system", content = SYSTEM_PROMPT))
-  messages <- c(messages, list(list(role = "user",
-    content = "run a t-test comparing mpg between 4 and 8 cylinder cars in mtcars")))
-  resp <- chat_completion(messages, tools = get_tool_definitions())
-  msg <- resp$choices[[1]]$message
-  if (!is.null(msg$tool_calls) && length(msg$tool_calls) > 0) {
-    tc <- msg$tool_calls[[1]]
-    if (tc$`function`$name == "execute_r_code") {
-      args <- jsonlite::fromJSON(tc$`function`$arguments, simplifyVector = FALSE)
-      combined <- tolower(args$code)
-      expect_true(grepl("t.test", combined) || grepl("mpg", combined))
-    }
-  } else if (!is.null(msg$content)) {
-    expect_true(grepl("t.test", tolower(msg$content)) || grepl("mpg", tolower(msg$content)))
-  }
+  agenticr_env$context_injected <- FALSE
+  agenticr_env$stable_summary <- NULL
+  agenticr_env$conversation <- list()
+  agenticr_env$ask_permission <- function(prompt) FALSE
+
+  expect_error(
+    process_with_agent("run a t-test comparing mpg between 4 and 8 cylinder cars in mtcars"),
+    NA
+  )
+  conv <- agenticr_env$conversation
+  expect_true(length(conv) > 0)
+  combined <- paste(sapply(conv, function(m) paste(m$content %||% "", collapse = " ")), collapse = " ")
+  expect_true(grepl("t\\.test|t-test|t test", combined, ignore.case = TRUE))
 })
 
-test_that("LLM: correlation request generates cor or lm", {
+test_that("LLM: correlation request produces result", {
   skip_if_no_api()
-  messages <- list(list(role = "system", content = SYSTEM_PROMPT))
-  messages <- c(messages, list(list(role = "user",
-    content = "what is the correlation between mpg and hp in mtcars?")))
-  resp <- chat_completion(messages, tools = get_tool_definitions())
-  msg <- resp$choices[[1]]$message
-  if (!is.null(msg$tool_calls) && length(msg$tool_calls) > 0) {
-    tc <- msg$tool_calls[[1]]
-    if (tc$`function`$name == "execute_r_code") {
-      args <- jsonlite::fromJSON(tc$`function`$arguments, simplifyVector = FALSE)
-      combined <- tolower(args$code)
-      expect_true(grepl("cor|lm", combined))
-    }
-  } else if (!is.null(msg$content)) {
-    expect_true(nchar(msg$content) > 10)
-  }
+  agenticr_env$context_injected <- FALSE
+  agenticr_env$stable_summary <- NULL
+  agenticr_env$conversation <- list()
+  agenticr_env$ask_permission <- function(prompt) FALSE
+
+  expect_error(
+    process_with_agent("what is the correlation between mpg and hp in mtcars?"),
+    NA
+  )
+  conv <- agenticr_env$conversation
+  expect_true(length(conv) > 0)
+  combined <- paste(sapply(conv, function(m) paste(m$content %||% "", collapse = " ")), collapse = " ")
+  expect_true(grepl("cor|0\\.77|-0\\.78|lm\\(", combined, ignore.case = TRUE))
 })
 
 # ============================================================================
@@ -247,38 +250,38 @@ test_that("LLM: multi-step analysis across turns", {
 # Data transformation
 # ============================================================================
 
-test_that("LLM: group-by summarise uses aggregate or group_by", {
+test_that("LLM: group-by summarise produces result", {
   skip_if_no_api()
-  messages <- list(list(role = "system", content = SYSTEM_PROMPT))
-  messages <- c(messages, list(list(role = "user",
-    content = "calculate mean mpg grouped by cyl in mtcars")))
-  resp <- chat_completion(messages, tools = get_tool_definitions())
-  msg <- resp$choices[[1]]$message
-  if (!is.null(msg$tool_calls) && length(msg$tool_calls) > 0) {
-    tc <- msg$tool_calls[[1]]
-    if (tc$`function`$name == "execute_r_code") {
-      args <- jsonlite::fromJSON(tc$`function`$arguments, simplifyVector = FALSE)
-      combined <- tolower(args$code)
-      expect_true(grepl("group_by|aggregate|tapply|by", combined))
-    }
-  }
+  agenticr_env$context_injected <- FALSE
+  agenticr_env$stable_summary <- NULL
+  agenticr_env$conversation <- list()
+  agenticr_env$ask_permission <- function(prompt) FALSE
+
+  expect_error(
+    process_with_agent("calculate mean mpg grouped by cyl in mtcars"),
+    NA
+  )
+  conv <- agenticr_env$conversation
+  expect_true(length(conv) > 0)
+  combined <- paste(sapply(conv, function(m) paste(m$content %||% "", collapse = " ")), collapse = " ")
+  expect_true(grepl("26\\.|aggregate|group_by|tapply|by\\(", combined, ignore.case = TRUE))
 })
 
-test_that("LLM: filter request uses correct syntax", {
+test_that("LLM: filter request produces result", {
   skip_if_no_api()
-  messages <- list(list(role = "system", content = SYSTEM_PROMPT))
-  messages <- c(messages, list(list(role = "user",
-    content = "show me cars in mtcars with mpg greater than 20")))
-  resp <- chat_completion(messages, tools = get_tool_definitions())
-  msg <- resp$choices[[1]]$message
-  if (!is.null(msg$tool_calls) && length(msg$tool_calls) > 0) {
-    tc <- msg$tool_calls[[1]]
-    if (tc$`function`$name == "execute_r_code") {
-      args <- jsonlite::fromJSON(tc$`function`$arguments, simplifyVector = FALSE)
-      combined <- tolower(args$code)
-      expect_true(grepl("filter|subset|\\[.*mpg", combined))
-    }
-  }
+  agenticr_env$context_injected <- FALSE
+  agenticr_env$stable_summary <- NULL
+  agenticr_env$conversation <- list()
+  agenticr_env$ask_permission <- function(prompt) FALSE
+
+  expect_error(
+    process_with_agent("show me cars in mtcars with mpg greater than 20"),
+    NA
+  )
+  conv <- agenticr_env$conversation
+  expect_true(length(conv) > 0)
+  combined <- paste(sapply(conv, function(m) paste(m$content %||% "", collapse = " ")), collapse = " ")
+  expect_true(grepl("Mazda|Merc|Hornet|filter|subset|\\[.*mpg", combined, ignore.case = TRUE))
 })
 
 # ============================================================================

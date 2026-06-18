@@ -442,7 +442,7 @@ get_api_config <- function() {
   # Local and custom providers don't require an API key
   if (cfg$provider == "local") {
     alive <- tryCatch(
-      httr::status_code(httr::GET("http://localhost:11434/api/tags", httr::timeout(2))) == 200,
+      httr::status_code(httr::GET("http://localhost:11434/api/tags", httr::timeout(5))) == 200,
       error = function(e) FALSE
     )
     if (!alive) {
