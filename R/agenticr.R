@@ -76,6 +76,23 @@ agenticr_env$mcp_servers <- list()
   if (!is.null(cfg$max_context_tokens)) {
     agenticr_env$max_context_tokens <- as.integer(cfg$max_context_tokens)
   }
+
+  # Copy bundled skills to user's skills directory on first load
+  bundled <- system.file("skills", package = "agenticr")
+  if (nchar(bundled) > 0 && dir.exists(bundled)) {
+    user_skills <- file.path(agenticr_dir(), "skills")
+    for (d in list.dirs(bundled, recursive = FALSE, full.names = TRUE)) {
+      skill_name <- basename(d)
+      dest_dir <- file.path(user_skills, skill_name)
+      if (!dir.exists(dest_dir)) {
+        dir.create(dest_dir, showWarnings = FALSE, recursive = TRUE)
+        skill_file <- file.path(d, "SKILL.md")
+        if (file.exists(skill_file)) {
+          file.copy(skill_file, dest_dir, overwrite = FALSE)
+        }
+      }
+    }
+  }
 }
 
 .onAttach <- function(libname, pkgname) {
