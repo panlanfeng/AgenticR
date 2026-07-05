@@ -157,6 +157,7 @@ agentic_install_skill <- function(url, name = NULL) {
 
 #' List installed skills
 #'
+#' @return No return value, called for side effects.
 #' @export
 agentic_skills <- function() {
   skills <- load_skills()

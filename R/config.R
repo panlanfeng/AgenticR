@@ -253,6 +253,7 @@ agentic_config <- function(..., save = FALSE) {
 #' \dontrun{
 #' agentic_setup()
 #' }
+#' @return No return value, called for side effects.
 #' @export
 agentic_setup <- function() {
   cli::cli_h1("AgenticR Setup")
@@ -301,7 +302,7 @@ agentic_setup <- function() {
   cli::cli_alert_info("Endpoint: {preset$base_url}")
 
   key_hint <- if (is.na(preset$env_var)) "your-api-key" else paste0("your ", preset$env_var)
-  cat(paste0("Enter API key (", key_hint, "): "))
+  cat(paste0("Enter API key (", key_hint, "): "))  # Interactive prompt
   api_key <- readline()
   if (api_key == "") {
     cli::cli_alert_danger("No API key entered. Setup cancelled.")
@@ -510,6 +511,7 @@ print.agenticr_config <- function(x, ...) {
 
 #' List available provider presets
 #'
+#' @return No return value, called for side effects.
 #' @export
 agentic_providers <- function() {
   cli::cli_h2("Available Providers")

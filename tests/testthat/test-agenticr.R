@@ -144,6 +144,7 @@ test_that("tool_get_dataframe_info handles missing vars", {
 })
 
 test_that("tool_get_dataframe_info handles non-dataframe objects", {
+  # Test variable added to global env with on.exit cleanup — required by get_dataframe_info tool
   assign("test_six", 42, envir = .GlobalEnv)
   on.exit(rm("test_six", envir = .GlobalEnv))
   result <- tool_get_dataframe_info("test_six")
@@ -268,6 +269,7 @@ test_that("tool_get_function_help handles empty name", {
 # ============================================================================
 
 test_that("tool_search_variables finds global vars", {
+  # Test variable added to global env with on.exit cleanup — required by search_variables tool
   assign("test_var_12345", 42, envir = .GlobalEnv)
   on.exit(rm("test_var_12345", envir = .GlobalEnv))
   result <- tool_search_variables("test_var_12345")

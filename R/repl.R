@@ -225,6 +225,7 @@ run_agentic_repl <- function() {
 #'
 #' @param session_id Session ID (e.g. "20250515_120000_a1b2c3d4")
 #' @param ... Not used
+#' @return No return value, called for side effects.
 #' @export
 agentic_resume <- function(session_id, ...) {
   sessions_dir <- file.path(agenticr_dir(), "sessions")
@@ -345,6 +346,7 @@ agentic_resume <- function(session_id, ...) {
 
 #' List available sessions for resuming
 #'
+#' @return No return value, called for side effects.
 #' @export
 agentic_sessions <- function() {
   sessions_dir <- file.path(agenticr_dir(), "sessions")
@@ -1271,6 +1273,7 @@ agentic_chat <- function(query) {
 #'
 #' @param auto_process If TRUE (default), automatically processes NL-like
 #'        errors with the LLM agent. If FALSE, just suggests using agenticr.
+#' @return No return value, called for side effects.
 #' @export
 agentic_enable <- function(auto_process = TRUE) {
   cfg <- tryCatch(get_api_config(), error = function(e) NULL)
@@ -1334,6 +1337,7 @@ agentic_enable <- function(auto_process = TRUE) {
 
 #' Disable error interceptor
 #'
+#' @return No return value, called for side effects.
 #' @export
 agentic_disable <- function() {
   if (!is.null(getOption("agenticr.error_handler"))) {

@@ -261,6 +261,7 @@ mcp_disconnect_all <- function() {
 #' @param args Character vector of command arguments
 #' @param env Named list of environment variables
 #' @param save If TRUE, save to config file
+#' @return No return value, called for side effects.
 #' @export
 agentic_mcp_add <- function(name, command, args = character(0), env = list(), save = FALSE) {
   cfg <- agenticr_env$config
@@ -279,6 +280,7 @@ agentic_mcp_add <- function(name, command, args = character(0), env = list(), sa
 
 #' List connected MCP servers
 #'
+#' @return No return value, called for side effects.
 #' @export
 agentic_mcp <- function() {
   if (length(agenticr_env$mcp_servers) == 0) {

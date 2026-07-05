@@ -532,7 +532,7 @@ tool_execute_r_code <- function(code) {
     return("Error: No code provided")
   }
 
-  cat(cli::col_green(paste0("\u2192 ", trimws(code), "\n")))
+  cat(cli::col_green(paste0("\u2192 ", trimws(code), "\n")))  # Interactive REPL
   utils::flush.console()
 
   warnings_list <- list()
@@ -548,9 +548,9 @@ tool_execute_r_code <- function(code) {
     help_type = "text",
     browser = function(url) message("Browser suppressed: ", url)
   )
+  on.exit(options(old_opts), add = TRUE)
 
   on.exit({
-    options(old_opts)
     if (file.exists(pager_file)) file.remove(pager_file)
   }, add = TRUE)
 
@@ -862,10 +862,10 @@ tool_get_function_help <- function(name, package = NULL) {
     help_type = "text",
     browser = function(url) message("Browser suppressed: ", url)
   )
+  on.exit(options(old_opts), add = TRUE)
   on.exit({
-    options(old_opts)
     if (file.exists(pager_file)) file.remove(pager_file)
-  })
+  }, add = TRUE)
 
   help_lines <- tryCatch(
     utils::capture.output(suppressWarnings(do.call(help,

@@ -5,8 +5,8 @@ Version: 0.3.2
 Authors@R: person("Lanfeng", "Pan", email = "panlanfeng@gmail.com", role = c("aut", "cre"))
 Description: An AI-powered assistant for the R console. Type natural language
     or incorrect R code directly in the console, and 'agenticr' routes it to an
-    LLM agent for processing. Focused on statistical analysis, data
-    transformation, and visualization.
+    AI agent for processing. Focused on statistical analysis, data
+    transformation, and visualization, <https://github.com/panlanfeng/AgenticR>.
 License: MIT + file LICENSE
 SystemRequirements: ripgrep (optional, for fast file search; install with 'winget install BurntSushi.ripgrep.MSVC' on Windows or see https://github.com/BurntSushi/ripgrep)
 Encoding: UTF-8
