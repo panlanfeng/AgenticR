@@ -68,6 +68,7 @@ jobs:
         with:
           token: ${{ secrets.RHUB_TOKEN }}
           job-config: ${{ matrix.config.job-config }}
+          args: "--as-cran"
 
   other-platforms:
     needs: setup
