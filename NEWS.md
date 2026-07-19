@@ -1,3 +1,16 @@
+# agenticr 0.3.3
+
+- CRAN compliance: added missing `\value` tags to 6 Rd files
+- CRAN compliance: switched from `~/.agenticr/` to `tools::R_user_dir()` for data storage
+- CRAN compliance: removed `assign(.GlobalEnv)` monkey-patching (reviewer confirmed `eval(.GlobalEnv)` is acceptable for interactive tools)
+- CRAN compliance: added `SystemRequirements` and `cran-comments.md`
+- Fixed `agentic_skills()` showing `NA` bytes
+- Fixed `agentic_enable()` cli formatting crash when no API key configured
+- Removed dead code: `write_turn_history()`, orphan roxygen, unused MCP fields, `todos`
+- Replaced `getExportedValue()` (always errored) with `getFromNamespace()`
+- Pure-R grep fallback when neither `rg` nor `grep` is available
+- Windows cross-platform fixes: `Sys.chmod()`, `rc.settings()`, path regex, `findstr` fallback
+
 # agenticr 0.3.2
 
 - Default provider is now local (Ollama Qwen3-1.7B) — zero config needed
