@@ -163,7 +163,41 @@ agentic_config(temperature = 0.0)  # deterministic output
 | `file_write` | Create or overwrite a file |
 | `task_write` | Create and maintain structured task lists |
 | `task_update` | Update task status |
+| `set_result_contract` | Record deterministic R checks for the final result |
 | `memory_write` | Write to persistent session memory |
+
+## Runtime event log and permission events
+
+Each session writes an append-only `events.jsonl` under its session directory.
+Conversation, task state, permission grants and verification are projections of
+that log. A partial final line from a crash is repaired on the next read; old
+`turns.jsonl` sessions are migrated automatically on resume.
+
+Permission decisions are events:
+
+```text
+policy_decision
+approval_result
+permission_grant
+permission_revoke
+tool_blocked
+```
+
+The default policy allows read-only tools, asks before model-generated R code
+that touches processes/files, asks before writes outside the workspace or temp
+directory, asks before package installation and MCP actions, and records grants
+when the user answers `always`.
+
+## R result verification and task graph
+
+The agent can call `set_result_contract` with deterministic R checks such as
+`dataframe_shape`, `value_equal`, `file_exists`, and `plot_layers`. Verification
+runs in `.GlobalEnv`; failed contracts are logged and fed back for one bounded
+retry.
+
+`task_write` accepts `depends_on`, so task nodes and edges are persisted in the
+event log rather than only in memory. This gives a durable task list/graph that
+survives resume; scheduling and worktree isolation can be layered on top later.
 
 ## REPL Commands
 

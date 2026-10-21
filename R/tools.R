@@ -33,6 +33,46 @@ get_tool_definitions <- function() {
     list(
       type = "function",
       "function" = list(
+        name = "set_result_contract",
+        description = paste0(
+          "Record deterministic R acceptance checks before finishing a task. ",
+          "Checks are evaluated in .GlobalEnv. Supported types: object_exists, ",
+          "object_class, dataframe_shape, dataframe_columns, value_equal, ",
+          "value_true, error_free, file_exists, file_contains, plot_layers."
+        ),
+        parameters = list(
+          type = "object",
+          properties = list(
+            goal = list(type = "string", description = "User goal"),
+            checks = list(
+              type = "array",
+              description = "Deterministic R checks",
+              items = list(
+                type = "object",
+                properties = list(
+                  type = list(type = "string"),
+                  name = list(type = "string"),
+                  expression = list(type = "string"),
+                  equals = list(description = "Expected value"),
+                  rows = list(type = "integer"),
+                  cols = list(type = "integer"),
+                  columns = list(type = "array", items = list(type = "string")),
+                  class = list(type = "array", items = list(type = "string")),
+                  path = list(type = "string"),
+                  text = list(type = "string"),
+                  layers = list(type = "array", items = list(type = "string"))
+                ),
+                required = list("type")
+              )
+            )
+          ),
+          required = list("goal", "checks")
+        )
+      )
+    ),
+    list(
+      type = "function",
+      "function" = list(
         name = "get_dataframe_info",
         description = paste0(
           "Get structure information about a data frame or tibble in the ",
@@ -313,11 +353,13 @@ get_tool_definitions <- function() {
               type = "array", description = "The complete task list",
               items = list(
                 type = "object",
-                properties = list(
-                  content = list(type = "string", description = "Brief description of the task"),
-                  status = list(type = "string", description = "Status: pending, in_progress, completed, or cancelled"),
-                  priority = list(type = "string", description = "Priority: high, medium, or low")
-                ),
+                    properties = list(
+                      content = list(type = "string", description = "Brief description of the task"),
+                      status = list(type = "string", description = "Status: pending, in_progress, completed, or cancelled"),
+                      priority = list(type = "string", description = "Priority: high, medium, or low"),
+                      depends_on = list(type = "array", description = "Task IDs this task depends on",
+                                        items = list(type = "integer"))
+                    ),
                 required = list("content", "status", "priority")
               )
             )
@@ -493,9 +535,20 @@ truncate_tool_result <- function(result, tool_name) {
 #'
 #' @keywords internal
 execute_tool <- function(tool_name, arguments) {
+  if (tool_name %in% c("execute_r_code", "file_write", "file_edit") ||
+      startsWith(tool_name, "mcp_")) {
+    if (!agenticr_permission_request(tool_name, arguments, source = "llm")) {
+      return("Blocked by policy: the action was not executed.")
+    }
+  }
   result <- switch(
     tool_name,
     execute_r_code = tool_execute_r_code(arguments$code),
+    set_result_contract = {
+      agenticr_env$result_contract <- arguments
+      paste0("Result contract recorded.\n",
+             agenticr_format_contract(arguments))
+    },
     get_dataframe_info = tool_get_dataframe_info(arguments$name),
     search_variables = tool_search_variables(arguments$pattern),
     read_file = tool_read_file(arguments$file_path, arguments$offset, arguments$limit, arguments$pattern, arguments$context_around),
@@ -1201,8 +1254,8 @@ tool_install_package <- function(name) {
     return(paste0("Package '", name, "' is already installed."))
   }
 
-  should_install <- agenticr_env$ask_permission(
-    paste0("Install package '", name, "' from CRAN?")
+  should_install <- agenticr_permission_request(
+    "install_package", list(name = name), source = "llm"
   )
 
   if (should_install) {
@@ -1247,13 +1300,20 @@ tool_task_write <- function(todos) {
   }
   df <- data.frame(id = integer(), content = character(), status = character(),
                    priority = character(), stringsAsFactors = FALSE)
+  dependencies <- list()
   for (i in seq_along(todos)) {
     t <- todos[[i]]
     df <- rbind(df, data.frame(id = i, content = t$content %||% "",
       status = t$status %||% "pending", priority = t$priority %||% "medium",
       stringsAsFactors = FALSE))
+    dependencies[[i]] <- as.integer(t$depends_on %||% integer(0))
   }
   agenticr_env$tasks <- df
+  agenticr_env$task_dependencies <- dependencies
+  agenticr_event_append("task_state", list(
+    tasks = lapply(seq_len(nrow(df)), function(i) as.list(df[i, , drop = FALSE])),
+    dependencies = dependencies
+  ), turn = agenticr_env$turn_counter %||% 0L)
   n <- nrow(df); done <- sum(df$status == "completed")
   pending <- sum(df$status == "pending"); in_prog <- sum(df$status == "in_progress")
   paste0(
@@ -1281,6 +1341,11 @@ tool_task_update <- function(id, status, content = NULL) {
   if (!is.null(content) && nchar(trimws(content)) > 0) {
     agenticr_env$tasks$content[id] <- trimws(content)
   }
+  agenticr_event_append("task_state", list(
+    tasks = lapply(seq_len(nrow(agenticr_env$tasks)), function(i)
+      as.list(agenticr_env$tasks[i, , drop = FALSE])),
+    dependencies = agenticr_env$task_dependencies %||% list()
+  ), turn = agenticr_env$turn_counter %||% 0L)
   t <- agenticr_env$tasks; n <- nrow(t)
   done <- sum(t$status == "completed"); cancelled <- sum(t$status == "cancelled")
   mark <- switch(status, completed = "[x]", in_progress = "[>]", cancelled = "[-]", "[ ]")

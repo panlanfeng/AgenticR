@@ -42,13 +42,25 @@ agentic <- function(auto = TRUE, ...) {
   agenticr_env$r_history_file <- file.path(agenticr_env$session_dir, "history")
   agenticr_env$turn_counter <- 0L
   agenticr_env$saved_msg_count <- 0L
-  agenticr_env$ask_permission <- function(prompt) {
+  agenticr_env$permission_grants <- list()
+  agenticr_env$task_dependencies <- list()
+  agenticr_env$result_contract <- NULL
+  agenticr_event_init()
+  agenticr_env$ask_permission_choice <- function(prompt) {
     cli::cli_alert_warning(paste0("Permission required: ", prompt))
-    ans <- readline("Proceed? [y/N] ")
-    tolower(trimws(ans)) %in% c("y", "yes")
+    ans <- readline("Proceed? [y/N/always] ")
+    tolower(trimws(ans))
+  }
+  agenticr_env$ask_permission <- function(prompt) {
+    ans <- agenticr_env$ask_permission_choice(prompt)
+    ans %in% c("y", "yes", "always", "always allow", "allow always")
   }
 
   on.exit({
+    agenticr_event_append("session_end", list(
+      turn = agenticr_env$turn_counter %||% 0L,
+      tokens = agenticr_env$total_session_tokens %||% 0L
+    ), turn = agenticr_env$turn_counter %||% 0L)
     n <- length(agenticr_env$conversation)
     if (agenticr_env$saved_msg_count < n) {
       save_turns_jsonl(agenticr_env$conversation, agenticr_env$saved_msg_count + 1L)
@@ -238,23 +250,24 @@ agentic_resume <- function(session_id, ...) {
   }
 
   turns_file <- file.path(session_dir, "turns.jsonl")
-  if (!file.exists(turns_file)) {
+  events_file <- file.path(session_dir, "events.jsonl")
+  if (!file.exists(turns_file) && !file.exists(events_file)) {
     cli::cli_alert_danger("No conversation found for session {.val {session_id}}")
     return(invisible())
   }
 
-  lines <- tryCatch(
-    readLines(turns_file, warn = FALSE),
-    error = function(e) {
-      cli::cli_alert_danger("Failed to read turns file: {conditionMessage(e)}")
-      return(character(0))
-    }
-  )
-
-  if (length(lines) == 0) {
-    cli::cli_alert_danger("Session {.val {session_id}} has no conversation history.")
-    return(invisible())
+  agenticr_env$session_id <- session_id
+  agenticr_env$session_dir <- session_dir
+  agenticr_env$outputs_dir <- file.path(session_dir, "outputs")
+  agenticr_env$events_file <- events_file
+  if (!file.exists(events_file) && file.exists(turns_file)) {
+    agenticr_migrate_turns_to_events(session_dir)
   }
+
+  lines <- if (file.exists(turns_file)) tryCatch(
+    readLines(turns_file, warn = FALSE),
+    error = function(e) character(0)
+  ) else character(0)
 
   conv <- list()
   compaction_summary <- NULL
@@ -270,6 +283,15 @@ agentic_resume <- function(session_id, ...) {
     }
 
     conv <- c(conv, list(msg))
+  }
+
+  replayed <- NULL
+  if (file.exists(events_file)) {
+    replayed <- agenticr_event_replay(agenticr_event_read(events_file)$events)
+    if (length(replayed$conversation) > 0) {
+      conv <- replayed$conversation
+      compaction_summary <- replayed$stable_summary
+    }
   }
 
   if (length(conv) == 0) {
@@ -291,21 +313,31 @@ agentic_resume <- function(session_id, ...) {
   agenticr_env$total_session_tokens <- 0L
   agenticr_env$active_skills <- list()
   agenticr_env$files_read <- list()
-  agenticr_env$tasks <- list()
-  agenticr_env$session_id <- session_id
-  agenticr_env$session_dir <- session_dir
-  agenticr_env$outputs_dir <- file.path(session_dir, "outputs")
+  agenticr_env$tasks <- replayed$tasks %||% list()
+  agenticr_env$task_dependencies <- replayed$task_dependencies %||% list()
+  agenticr_env$permission_grants <- replayed$permission_grants %||% list()
+  agenticr_env$result_contract <- NULL
+  agenticr_env$events_file <- events_file
+  agenticr_env$event_log_degraded <- FALSE
   agenticr_env$r_history_file <- file.path(session_dir, "history")
   agenticr_env$turns_file <- turns_file
   agenticr_env$turn_counter <- 0L
   agenticr_env$saved_msg_count <- length(agenticr_env$conversation)
-  agenticr_env$ask_permission <- function(prompt) {
+  agenticr_env$ask_permission_choice <- function(prompt) {
     cli::cli_alert_warning(paste0("Permission required: ", prompt))
-    ans <- readline("Proceed? [y/N] ")
-    tolower(trimws(ans)) %in% c("y", "yes")
+    ans <- readline("Proceed? [y/N/always] ")
+    tolower(trimws(ans))
+  }
+  agenticr_env$ask_permission <- function(prompt) {
+    ans <- agenticr_env$ask_permission_choice(prompt)
+    ans %in% c("y", "yes", "always", "always allow", "allow always")
   }
 
   on.exit({
+    agenticr_event_append("session_end", list(
+      turn = agenticr_env$turn_counter %||% 0L,
+      tokens = agenticr_env$total_session_tokens %||% 0L
+    ), turn = agenticr_env$turn_counter %||% 0L)
     n <- length(agenticr_env$conversation)
     if (agenticr_env$saved_msg_count < n) {
       save_turns_jsonl(agenticr_env$conversation, agenticr_env$saved_msg_count + 1L)
@@ -366,10 +398,14 @@ agentic_sessions <- function() {
   cli::cli_h2("Available Sessions")
   for (d in sort(dirs, decreasing = TRUE)) {
     turns_file <- file.path(sessions_dir, d, "turns.jsonl")
-    n_turns <- if (file.exists(turns_file)) {
+    events_file <- file.path(sessions_dir, d, "events.jsonl")
+    n_turns <- if (file.exists(events_file)) {
+      events <- agenticr_event_read(events_file, strict = FALSE)$events
+      sum(vapply(events, function(event) identical(event$type, "turn_end"), logical(1)))
+    } else if (file.exists(turns_file)) {
       tryCatch(length(readLines(turns_file, warn = FALSE)), error = function(e) 0)
     } else 0
-    cli::cli_li("{.val {d}} ({n_turns} messages)")
+    cli::cli_li("{.val {d}} ({n_turns} turns)")
   }
   cli::cli_text("Resume with: {.code agentic_resume(\"<id>\")}")
   invisible()
@@ -449,6 +485,15 @@ process_input <- function(input) {
   is_nl <- is_natural_language(input)
 
   if (!is_nl) {
+    if (!agenticr_permission_request("execute_r_code", list(code = input),
+                                     source = "user")) {
+      return(list(nl = FALSE, output = "", error = "blocked by policy"))
+    }
+    agenticr_env$turn_counter <- (agenticr_env$turn_counter %||% 0L) + 1L
+    turn <- agenticr_env$turn_counter
+    agenticr_event_append("turn_start", list(user_input = input, cwd = getwd()),
+                          turn = turn)
+    agenticr_event_append("r_code_started", list(code = input), turn = turn)
     result <- tryCatch({
       con <- textConnection("output_lines", open = "w", local = TRUE)
       sink(con, type = "output")
@@ -487,6 +532,10 @@ process_input <- function(input) {
         agenticr_env$conversation,
         list(list(role = "user", content = conv_msg))
       )
+      agenticr_event_append_message(list(role = "user", content = conv_msg), turn = turn)
+      agenticr_event_append("r_code_executed", list(code = input, output = output),
+                            turn = turn)
+      agenticr_event_append("turn_end", list(summary = output), turn = turn)
       write_r_history(input)
 
       list(nl = FALSE, output = output)
@@ -505,6 +554,9 @@ process_input <- function(input) {
         process_with_agent(input)
         return(list(nl = TRUE, response = tail(agenticr_env$conversation, 1)[[1]]$content %||% ""))
       }
+      agenticr_event_append("r_code_error", list(code = input, error = error_msg),
+                            turn = turn)
+      agenticr_event_append("turn_end", list(summary = error_msg), turn = turn)
       cli::cli_alert_danger("{.val {error_msg}}")
       list(nl = FALSE, output = "", error = error_msg)
     })
@@ -604,8 +656,17 @@ process_with_agent <- function(user_input) {
     agenticr_env$turns_file <- file.path(agenticr_env$session_dir, "turns.jsonl")
     agenticr_env$saved_msg_count <- 0L
     agenticr_env$turn_counter <- 0L
+    agenticr_event_init()
   }
   cfg <- get_api_config()
+  agenticr_env$turn_counter <- (agenticr_env$turn_counter %||% 0L) + 1L
+  turn <- agenticr_env$turn_counter
+  agenticr_env$result_contract <- NULL
+  agenticr_event_append("turn_start", list(
+    user_input = user_input,
+    cwd = getwd()
+  ), turn = turn)
+  agenticr_event_append_message(list(role = "user", content = user_input), turn = turn)
   tools <- get_tool_definitions()
   mcp_tools <- mcp_all_tools()
   if (length(mcp_tools) > 0) {
@@ -669,6 +730,8 @@ process_with_agent <- function(user_input) {
   messages <- c(messages, list(list(role = "user", content = user_content)))
 
   round <- 0L
+  verify_retries <- 0L
+  last_verification <- NULL
   turn_tokens <- 0L
   max_turn_tokens <- min(
     cfg$max_turn_tokens %||% 64000L,
@@ -781,6 +844,7 @@ process_with_agent <- function(user_input) {
         assistant_msg$reasoning_content <- reasoning
       }
       messages <- c(messages, list(assistant_msg))
+      agenticr_event_append_message(assistant_msg, turn = turn)
 
       for (tc in tool_calls) {
         tool_name <- tc$`function`$name
@@ -820,11 +884,19 @@ process_with_agent <- function(user_input) {
           }
         }
 
-        messages <- c(messages, list(list(
+        tool_msg <- list(
           role = "tool",
           tool_call_id = tc$id,
           content = if (is.null(tool_result)) "" else tool_result
-        )))
+        )
+        messages <- c(messages, list(tool_msg))
+        agenticr_event_append("tool_result", list(
+          tool_call_id = tc$id,
+          tool = tool_name,
+          arguments = tool_args,
+          result = tool_result
+        ), turn = turn)
+        agenticr_event_append_message(tool_msg, turn = turn)
       }
 
       next
@@ -839,12 +911,34 @@ process_with_agent <- function(user_input) {
         msg_entry$reasoning_content <- reasoning
       }
       messages <- c(messages, list(msg_entry))
+      agenticr_event_append_message(msg_entry, turn = turn)
 
       cat("\n")
       if (!is.na(cache_pct)) {
         cat(cli::col_silver(sprintf("cache: %d%% hit (%d/%d tokens)\n",
             cache_pct, cache_hit, cache_total)))
         utils::flush.console()
+      }
+      verification <- agenticr_verify_contract(agenticr_env$result_contract)
+      if (!is.null(agenticr_env$result_contract)) {
+        agenticr_event_append("verification", c(verification, list(
+          contract = agenticr_env$result_contract
+        )), turn = turn)
+        last_verification <- verification
+      }
+      if (identical(verification$satisfied, FALSE) && verify_retries < 1L) {
+        verify_retries <- verify_retries + 1L
+        feedback <- list(
+          role = "user",
+          content = paste0(
+            "[result verification failed]\n",
+            verification$reason,
+            "\nFix the R result and retry."
+          )
+        )
+        messages <- c(messages, list(feedback))
+        agenticr_event_append_message(feedback, turn = turn)
+        next
       }
       break
     }
@@ -870,6 +964,11 @@ process_with_agent <- function(user_input) {
     save_turns_jsonl(conv, new_start)
     agenticr_env$saved_msg_count <- length(conv)
   }
+  final_summary <- if (length(conv) > 0) conv[[length(conv)]]$content %||% "" else ""
+  agenticr_event_append("turn_end", list(
+    summary = final_summary,
+    verification = last_verification
+  ), turn = turn)
 
   utils::flush.console()
 }
@@ -1001,6 +1100,8 @@ SYSTEM_PROMPT <- paste0(
   "Say 'I notice a recurring pattern. Should I create a skill for this?' ",
   "and wait for confirmation before calling create_skill.\n",
   "- Only stop making tool calls when the user's entire request is fully addressed.\n",
+  "- For tasks with a deterministic R outcome, call set_result_contract before finishing. ",
+  "Use R-object checks such as dataframe_shape, value_equal, file_exists, or plot_layers.\n",
   "- When user asks a general question, ",
   "answer it using available tools if needed.\n\n",
 

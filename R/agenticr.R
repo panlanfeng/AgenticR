@@ -67,6 +67,14 @@ agenticr_env$version <- "0.3.3"
 agenticr_env$session_dir <- NULL
 agenticr_env$session_id <- NULL
 agenticr_env$outputs_dir <- NULL
+agenticr_env$events_file <- NULL
+agenticr_env$event_log_degraded <- FALSE
+agenticr_env$last_event_error <- NULL
+agenticr_env$permission_grants <- list()
+agenticr_env$task_dependencies <- list()
+agenticr_env$result_contract <- NULL
+agenticr_env$turn_counter <- 0L
+agenticr_env$ask_permission_choice <- NULL
 agenticr_env$local_server <- NULL
 agenticr_env$mcp_servers <- list()
 

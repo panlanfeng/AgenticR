@@ -6,6 +6,58 @@
 # NL detection tests
 # ============================================================================
 
+test_that("event log, permission policy, task graph, and R verification work", {
+  old <- list(
+    session_dir = agenticr_env$session_dir,
+    session_id = agenticr_env$session_id,
+    events_file = agenticr_env$events_file,
+    turns_file = agenticr_env$turns_file,
+    tasks = agenticr_env$tasks,
+    task_dependencies = agenticr_env$task_dependencies,
+    permission_grants = agenticr_env$permission_grants,
+    config = agenticr_env$config
+  )
+  on.exit({
+    for (name in names(old)) assign(name, old[[name]], envir = agenticr_env)
+  }, add = TRUE)
+
+  agenticr_env$session_dir <- tempfile("agenticr_events_")
+  dir.create(agenticr_env$session_dir)
+  agenticr_env$session_id <- "test_events"
+  agenticr_env$config <- list(model = "test-model")
+  agenticr_env$turn_counter <- 0L
+  agenticr_env$permission_grants <- list()
+  agenticr_event_init()
+
+  agenticr_event_append_message(list(role = "user", content = "hello"), turn = 1L)
+  agenticr_event_append("permission_grant", list(grant = list(
+    grant_id = "g1", action = "execute_r_code", contains = "system"
+  )), turn = 1L)
+  replayed <- agenticr_event_replay(agenticr_event_read(agenticr_env$events_file)$events)
+  expect_equal(replayed$conversation[[1]]$content, "hello")
+  expect_equal(replayed$permission_grants[[1]]$grant_id, "g1")
+
+  expect_equal(agenticr_policy_check("execute_r_code", list(code = "system('ls')"))$decision, "ask")
+  expect_equal(agenticr_policy_check("execute_r_code", list(code = "mean(1:3)"), source = "user")$decision, "allow")
+  expect_equal(agenticr_policy_check("run_command", list(), source = "user")$decision, "allow")
+
+  agenticr_env$turn_counter <- 1L
+  tool_task_write(list(
+    list(content = "first", status = "pending", priority = "high"),
+    list(content = "second", status = "pending", priority = "low", depends_on = c(1L))
+  ))
+  expect_equal(nrow(agenticr_env$tasks), 2)
+  expect_equal(agenticr_env$task_dependencies[[2]], 1L)
+
+  df <- data.frame(x = 1:3, y = 4:6)
+  contract <- list(goal = "shape", checks = list(
+    list(type = "dataframe_shape", name = "df", rows = 3, cols = 2),
+    list(type = "value_equal", expression = "sum(df$x)", equals = 6)
+  ))
+  result <- agenticr_verify_contract(contract, envir = environment())
+  expect_true(result$satisfied)
+})
+
 test_that("is_natural_language detects R code correctly", {
   expect_false(is_natural_language("x <- 1:10"))
   expect_false(is_natural_language("library(ggplot2)"))

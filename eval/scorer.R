@@ -13,6 +13,14 @@ results_file <- if (length(args) > 0) args[1] else {
 
 cat("Scoring:", results_file, "\n\n")
 
+events_file <- file.path("results", "events.jsonl")
+cat(as.character(jsonlite::toJSON(list(
+  type = "eval_run_start",
+  timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"),
+  results_file = results_file
+), auto_unbox = TRUE, null = "null")), "\n", sep = "",
+    file = events_file, append = TRUE)
+
 lines <- readLines(results_file, warn = FALSE)
 entries <- lapply(lines, fromJSON, simplifyVector = FALSE)
 
@@ -186,6 +194,19 @@ for (e in entries) {
 
   scores <- rbind(scores, data.frame(category=cat, file=e$file,
     exec=exec, output=output, sim=sim, composite=composite, stringsAsFactors=FALSE))
+  cat(as.character(jsonlite::toJSON(list(
+    type = "eval_result",
+    timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"),
+    category = cat,
+    file = e$file,
+    exec = exec,
+    output = output,
+    sim = sim,
+    composite = composite,
+    generated_code = generated,
+    expected_code = expected
+  ), auto_unbox = TRUE, null = "null")), "\n", sep = "",
+      file = events_file, append = TRUE)
 }
 
 cat("\n========== Summary ==========\n\n")
@@ -197,3 +218,13 @@ for (cat in unique(scores$category)) {
 cat(sprintf("\n%-10s: exec=%.0f%%  output=%.2f  sim=%.2f  composite=%.3f  (%d)\n",
   "OVERALL", mean(scores$exec)*100, mean(scores$output), mean(scores$sim),
   mean(scores$composite), nrow(scores)))
+cat(as.character(jsonlite::toJSON(list(
+  type = "eval_run_end",
+  timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"),
+  n = nrow(scores),
+  exec = mean(scores$exec),
+  output = mean(scores$output),
+  sim = mean(scores$sim),
+  composite = mean(scores$composite)
+), auto_unbox = TRUE, null = "null")), "\n", sep = "",
+    file = events_file, append = TRUE)
